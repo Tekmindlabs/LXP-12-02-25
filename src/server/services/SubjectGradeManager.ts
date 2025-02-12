@@ -201,11 +201,11 @@ export class SubjectGradeManager {
 			})
 		]);
 		
-		const existingTermGrades = (existingRecord?.termGrades as Record<string, any>) || {};
-		const updatedTermGrades = JSON.stringify({
+		const existingTermGrades = existingRecord?.termGrades as Record<string, SubjectTermGrade> || {};
+		const updatedTermGrades = {
 			...existingTermGrades,
 			[termId]: termGrade
-		});
+		};
 		
 		await this.db.subjectGradeRecord.upsert({
 			where: {
@@ -217,16 +217,15 @@ export class SubjectGradeManager {
 			create: {
 				gradeBookId,
 				subjectId,
-				termGrades: JSON.stringify({ [termId]: termGrade }),
+				termGrades: { [termId]: termGrade },
 				assessmentPeriodGrades: Prisma.JsonNull
 			}
 		});
 
-
-
 		// Record grade history
 		await this.recordGradeHistory(studentId, subjectId, termGrade);
 	}
+
 
 	private async recordGradeHistory(
 		studentId: string,

@@ -5,6 +5,7 @@ import { AssessmentService } from "./AssessmentService";
 import { BatchProcessingConfig } from '../../types/grades';
 
 type PrismaTransaction = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
+type PrismaClientOrTransaction = PrismaClient | PrismaTransaction;
 
 interface CreateClassInput {
     name: string;
@@ -57,49 +58,55 @@ interface CumulativeGradeData {
 
 export class GradeBookService {
     private subjectGradeManager: SubjectGradeManager;
-    private assessmentService: AssessmentService;
 
-    constructor(private db: PrismaClient) {
-        this.subjectGradeManager = new SubjectGradeManager(db);
-        this.assessmentService = new AssessmentService(db);
+    constructor(
+        private db: PrismaClientOrTransaction,
+        private assessmentService: AssessmentService
+    ) {
+        this.subjectGradeManager = new SubjectGradeManager(db as PrismaClient);
+    }
+
+
+    private isPrismaClient(client: PrismaClientOrTransaction): client is PrismaClient {
+        return '$transaction' in client;
     }
 
 
 
 
     async initializeGradeBook(classId: string): Promise<void> {
-        const classData = (await this.db.class.findUnique({
-            where: { id: classId },
-            include: {
-                classGroup: {
-                    include: {
-                        program: {
-                            include: {
-                                assessmentSystem: true,
-                                termStructures: {
-                                    where: { status: 'ACTIVE' },
-                                    orderBy: { order: 'asc' },
-                                    take: 1
+        const operation = async (tx: PrismaClientOrTransaction) => {
+            const classData = (await tx.class.findUnique({
+                where: { id: classId },
+                include: {
+                    classGroup: {
+                        include: {
+                            program: {
+                                include: {
+                                    assessmentSystem: true,
+                                    termStructures: {
+                                        where: { status: 'ACTIVE' },
+                                        orderBy: { order: 'asc' },
+                                        take: 1
+                                    }
                                 }
-                            }
-                        },
-                        subjects: true
+                            },
+                            subjects: true
+                        }
                     }
                 }
+            })) as ClassData;
+
+            if (!classData) throw new Error('Class not found');
+
+            const assessmentSystem = classData.classGroup.program.assessmentSystem;
+            const termStructure = classData.classGroup.program.termStructures[0];
+
+            if (!assessmentSystem || !termStructure) {
+                throw new Error('Assessment system or term structure not found');
             }
-        })) as ClassData;
 
-        if (!classData) throw new Error('Class not found');
-
-        const assessmentSystem = classData.classGroup.program.assessmentSystem;
-        const termStructure = classData.classGroup.program.termStructures[0];
-
-        if (!assessmentSystem || !termStructure) {
-            throw new Error('Assessment system or term structure not found');
-        }
-
-        await this.db.$transaction(async (prisma) => {
-            const gradeBook = await prisma.gradeBook.create({
+            await tx.gradeBook.create({
                 data: {
                     classId,
                     assessmentSystemId: assessmentSystem.id,
@@ -114,16 +121,22 @@ export class GradeBookService {
                 }
             });
 
-            await prisma.class.update({
+            await tx.class.update({
                 where: { id: classId },
                 data: { termStructureId: termStructure.id }
             });
-        });
+        };
+
+        if (this.isPrismaClient(this.db)) {
+            await this.db.$transaction(operation);
+        } else {
+            await operation(this.db);
+        }
     }
 
 
     async createClassWithInheritance(classData: CreateClassInput): Promise<any> {
-        return await this.db.$transaction(async (tx: PrismaTransaction) => {
+        const operation = async (tx: PrismaClientOrTransaction) => {
             const newClass = await tx.class.create({
                 data: {
                     name: classData.name,
@@ -170,7 +183,13 @@ export class GradeBookService {
             );
 
             return newClass;
-        });
+        };
+
+        if (this.isPrismaClient(this.db)) {
+            return await this.db.$transaction(operation);
+        } else {
+            return await operation(this.db);
+        }
     }
 
     private async initializeSubjectGradeRecords(
@@ -182,6 +201,7 @@ export class GradeBookService {
             where: { id: classGroupId },
             include: { subjects: true }
         });
+
 
         if (!classGroup) {
             throw new Error(`ClassGroup with id ${classGroupId} not found`);
@@ -359,24 +379,24 @@ export class GradeBookService {
     }
 
     async updateActivityGrade(data: ActivityGrade): Promise<void> {
-        const activity = await this.db.classActivity.findUnique({
-            where: { id: data.activityId },
-            include: {
-                subject: true,
-                class: {
-                    include: {
-                        gradeBook: true
+        const operation = async (tx: PrismaClientOrTransaction) => {
+            const activity = await tx.classActivity.findUnique({
+                where: { id: data.activityId },
+                include: {
+                    subject: true,
+                    class: {
+                        include: {
+                            gradeBook: true
+                        }
                     }
                 }
+            });
+
+            if (!activity) {
+                throw new Error('Activity not found');
             }
-        });
 
-        if (!activity) {
-            throw new Error('Activity not found');
-        }
-
-        await this.db.$transaction(async (prisma) => {
-            await prisma.activitySubmission.upsert({
+            await tx.activitySubmission.upsert({
                 where: {
                     activityId_studentId: {
                         activityId: data.activityId,
@@ -400,7 +420,7 @@ export class GradeBookService {
                 }
             });
 
-            await prisma.gradeHistory.create({
+            await tx.gradeHistory.create({
                 data: {
                     studentId: data.studentId,
                     subjectId: activity.subjectId,
@@ -411,7 +431,13 @@ export class GradeBookService {
                     reason: 'Activity grade update'
                 }
             });
-        });
+        };
+
+        if (this.isPrismaClient(this.db)) {
+            await this.db.$transaction(operation);
+        } else {
+            await operation(this.db);
+        }
     }
 
     async calculateSubjectGrade(

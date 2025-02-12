@@ -1,8 +1,18 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { Status } from "@prisma/client";
+import { Status, PrismaClient } from "@prisma/client";
 import { TRPCError } from "@trpc/server";
 import { DefaultRoles } from '@/utils/permissions';
+import { GradeBookService } from '@/server/services/GradeBookService';
+import { AssessmentService } from '@/server/services/AssessmentService';
+import { TermManagementService } from '@/server/services/TermManagementService';
+
+// Helper function to create services with transaction
+function createServices(prisma: PrismaClient) {
+	const assessmentService = new AssessmentService(prisma);
+	return new GradeBookService(prisma, assessmentService);
+}
+
 
 export const classRouter = createTRPCRouter({
 	createClass: protectedProcedure
@@ -20,45 +30,52 @@ export const classRouter = createTRPCRouter({
 		.mutation(async ({ ctx, input }) => {
 			const { teacherIds, classTutorId, ...classData } = input;
 			
-			const newClass = await ctx.prisma.class.create({
-				data: {
-					...classData,
-					...(teacherIds && {
-						teachers: {
-							create: teacherIds.map(teacherId => ({
-								teacher: {
-									connect: { id: teacherId }
-								},
-								isClassTutor: teacherId === classTutorId,
-								status: Status.ACTIVE,
-							})),
-						},
-					}),
-				},
-				include: {
-					classGroup: {
-						include: {
-							program: true,
-						},
+			return await ctx.prisma.$transaction(async (tx) => {
+				const newClass = await tx.class.create({
+					data: {
+						...classData,
+						...(teacherIds && {
+							teachers: {
+								create: teacherIds.map(teacherId => ({
+									teacher: {
+										connect: { id: teacherId }
+									},
+									isClassTutor: teacherId === classTutorId,
+									status: Status.ACTIVE,
+								})),
+							},
+						}),
 					},
-					teachers: {
-						include: {
-							teacher: {
-								include: {
-									user: true,
+					include: {
+						classGroup: {
+							include: {
+								program: true,
+							},
+						},
+						teachers: {
+							include: {
+								teacher: {
+									include: {
+										user: true,
+									},
 								},
 							},
 						},
-					},
-					students: {
-						include: {
-							user: true,
+						students: {
+							include: {
+								user: true,
+							},
 						},
 					},
-				},
-			});
+				});
 
-			return newClass;
+				// Initialize gradebook using the helper function
+				const gradeBookService = createServices(tx as PrismaClient);
+				await gradeBookService.initializeGradeBook(newClass.id);
+
+
+				return newClass;
+			});
 		}),
 
 	updateClass: protectedProcedure
@@ -624,36 +641,80 @@ export const classRouter = createTRPCRouter({
 			classId: z.string(),
 		}))
 		.query(async ({ ctx, input }) => {
-			const gradeBook = await ctx.prisma.gradeBook.findUnique({
-				where: {
-					classId: input.classId,
-				},
-				include: {
-					assessmentSystem: true,
-					termStructure: {
-						include: {
-							academicTerms: {
-								include: {
-									assessmentPeriods: true,
+			try {
+				const gradeBook = await ctx.prisma.gradeBook.findUnique({
+					where: {
+						classId: input.classId,
+					},
+					include: {
+						assessmentSystem: true,
+						termStructure: {
+							include: {
+								academicTerms: {
+									include: {
+										assessmentPeriods: true,
+									},
 								},
 							},
 						},
-					},
-					subjectRecords: {
-						include: {
-							subject: true,
+						subjectRecords: {
+							include: {
+								subject: true,
+							},
 						},
 					},
-				},
-			});
+				});
 
-			if (!gradeBook) {
+				if (!gradeBook) {
+					// Try to initialize gradebook if it doesn't exist
+					const gradeBookService = createServices(ctx.prisma);
+
+					
+					await gradeBookService.initializeGradeBook(input.classId);
+					
+					// Fetch the newly created gradebook
+					const newGradeBook = await ctx.prisma.gradeBook.findUnique({
+						where: {
+							classId: input.classId,
+						},
+						include: {
+							assessmentSystem: true,
+							termStructure: {
+								include: {
+									academicTerms: {
+										include: {
+											assessmentPeriods: true,
+										},
+									},
+								},
+							},
+							subjectRecords: {
+								include: {
+									subject: true,
+								},
+							},
+						},
+					});
+
+					if (!newGradeBook) {
+						throw new TRPCError({
+							code: 'NOT_FOUND',
+							message: 'Failed to initialize gradebook',
+						});
+					}
+
+					return newGradeBook;
+				}
+
+				return gradeBook;
+			} catch (error) {
+				if (error instanceof TRPCError) throw error;
+				
 				throw new TRPCError({
-					code: 'NOT_FOUND',
-					message: 'Gradebook not found for this class',
+					code: 'INTERNAL_SERVER_ERROR',
+					message: 'Failed to fetch gradebook',
+					cause: error,
 				});
 			}
-
-			return gradeBook;
 		}),
 });

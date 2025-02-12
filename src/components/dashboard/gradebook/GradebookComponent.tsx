@@ -1,5 +1,7 @@
 'use client';
 
+'use client';
+
 import { useState, useEffect } from 'react';
 import { api } from '@/utils/api';
 import { Card } from '@/components/ui/card';
@@ -7,8 +9,8 @@ import { Table } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { SubjectTermGrade, AssessmentPeriodGrade } from '@/types/grades';
-import type { Class } from '@/types/class';
+import { toast } from '@/hooks/use-toast';
+import { TRPCClientError } from '@trpc/client';
 
 interface GradeBookProps {
 	classId: string;
@@ -17,13 +19,27 @@ interface GradeBookProps {
 export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
 	const [activeTerm, setActiveTerm] = useState<string>();
 
-	const { data: gradeBook, isLoading, error } = api.class.getGradebook.useQuery(
+	const { data: gradeBook, isLoading, error, refetch } = api.class.getGradebook.useQuery(
 		{ classId },
 		{
-			staleTime: 5 * 60 * 1000, // 5 minutes
-			enabled: !!classId
+			staleTime: 5 * 60 * 1000,
+			enabled: !!classId,
+			retry: 1
 		}
 	);
+
+	useEffect(() => {
+		if (error) {
+			toast({
+				title: "Error",
+				description: error instanceof TRPCClientError ? error.message : 'Failed to load gradebook',
+				variant: "destructive",
+			});
+		}
+	}, [error]);
+
+
+
 
 	useEffect(() => {
 		if (gradeBook?.termStructure?.academicTerms?.[0]?.id) {
@@ -69,12 +85,14 @@ export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
 				</thead>
 				<tbody>
 					{gradeBook.subjectRecords.map((record) => {
-						const termGrade = record.termGrades ? 
-							(JSON.parse(record.termGrades as string) || {})[activeTerm] : null;
+						const termGrades = record.termGrades as Record<string, SubjectTermGrade> || {};
+						const termGrade = termGrades[activeTerm];
+
 						if (!termGrade) return null;
 
-
 						return (
+
+
 							<tr key={record.id}>
 								<td>{record.subject.name}</td>
 								{activePeriods.map((period: { id: string }) => (
@@ -109,11 +127,13 @@ export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
 		);
 	}
 
-	if (error instanceof Error) {
+	if (error) {
 		return (
 			<Card className="p-4">
-				<p className="text-red-500">{error.message}</p>
-				<Button onClick={() => window.location.reload()}>Retry</Button>
+				<div className="space-y-4">
+					<p className="text-red-500">{error.message}</p>
+					<Button onClick={() => refetch()}>Retry</Button>
+				</div>
 			</Card>
 		);
 	}
@@ -121,10 +141,16 @@ export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
 	if (!gradeBook) {
 		return (
 			<Card className="p-4">
-				<p>No gradebook found for this class.</p>
+				<div className="space-y-4">
+					<p>No gradebook found for this class.</p>
+					<Button onClick={() => refetch()}>
+						Retry Loading Gradebook
+					</Button>
+				</div>
 			</Card>
 		);
 	}
+
 
 	return (
 		<Card className="p-4">
