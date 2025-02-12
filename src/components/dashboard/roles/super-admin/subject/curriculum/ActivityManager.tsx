@@ -8,6 +8,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
+  BookOpen, 
+  GraduationCap, 
+  PenTool,
+  ClipboardList,
+  CheckSquare,
+  Presentation
+} from "lucide-react";
 import {
 	Select,
 	SelectContent,
@@ -40,6 +50,25 @@ const isProjectContent = (content: ActivityContent): content is ProjectContent =
 	return 'description' in content;
 };
 
+
+const getActivityIcon = (type: ActivityType) => {
+	switch (type) {
+		case 'QUIZ_MULTIPLE_CHOICE':
+		case 'QUIZ_DRAG_DROP':
+		case 'QUIZ_FILL_BLANKS':
+		case 'QUIZ_MEMORY':
+		case 'QUIZ_TRUE_FALSE':
+			return <CheckSquare className="h-5 w-5" />;
+		case 'CLASS_ASSIGNMENT':
+			return <ClipboardList className="h-5 w-5" />;
+		case 'CLASS_PROJECT':
+			return <PenTool className="h-5 w-5" />;
+		case 'CLASS_PRESENTATION':
+			return <Presentation className="h-5 w-5" />;
+		default:
+			return <BookOpen className="h-5 w-5" />;
+	}
+};
 
 interface ActivityFormProps {
 	nodeId: string;
@@ -252,51 +281,72 @@ export const ActivityManager: React.FC<ActivityManagerProps> = ({ nodeId }) => {
 	}
 
 	return (
-		<div className="space-y-4">
-			<div className="flex justify-between items-center">
-				<h3 className="text-lg font-medium">Learning Activities</h3>
-				<Button onClick={() => setShowForm(true)} disabled={showForm}>
-					<Plus className="h-4 w-4 mr-2" />
-					Add Activity
-				</Button>
-			</div>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center sticky top-0 bg-background py-2">
+        <h3 className="text-lg font-medium">Learning Activities</h3>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button onClick={() => setShowForm(true)} disabled={showForm}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Activity
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-[90vh]">
+            <ScrollArea className="h-full">
+              <div className="py-6">
+                <h3 className="text-lg font-medium mb-4">Add New Activity</h3>
+                <ActivityForm
+                  nodeId={nodeId}
+                  onSuccess={() => {
+                    setShowForm(false);
+                    refetch();
+                  }}
+                  onCancel={() => setShowForm(false)}
+                />
+              </div>
+            </ScrollArea>
+          </SheetContent>
+        </Sheet>
+      </div>
 
-			{showForm && (
-				<ActivityForm
-					nodeId={nodeId}
-					onSuccess={() => {
-						setShowForm(false);
-						refetch();
-					}}
-					onCancel={() => setShowForm(false)}
-				/>
-			)}
-
-			<div className="grid grid-cols-2 gap-4">
-				{activities?.map((activity) => (
-				  <Card key={activity.id}>
-					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-					  <div>
-						<CardTitle className="text-sm font-medium">
-						  {activity.title}
-						</CardTitle>
-						<CardDescription className="text-xs">
-						  {activity.type} {activity.isGraded && "• Graded"}
-						</CardDescription>
-					  </div>
-					  <Button
-						variant="ghost"
-						size="sm"
-						onClick={() => handleDelete(activity.id)}
-						disabled={deleteActivity.status === 'pending'}
-					  >
-						<Trash2 className="h-4 w-4" />
-					  </Button>
-					</CardHeader>
-				  </Card>
-				))}
-
-			</div>
-		</div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {activities?.map((activity) => (
+          <Card 
+            key={activity.id}
+            className="group relative hover:shadow-md transition-shadow"
+          >
+            <CardHeader className="flex flex-row items-start gap-4 space-y-0">
+              <div className="rounded-lg bg-muted p-2">
+                {getActivityIcon(activity.type)}
+              </div>
+              <div className="flex-1 space-y-1">
+                <CardTitle className="text-sm font-medium line-clamp-2">
+                  {activity.title}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {activity.type.split('_').map(word => 
+                    word.charAt(0) + word.slice(1).toLowerCase()
+                  ).join(' ')}
+                  {activity.isGraded && (
+                    <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      Graded
+                    </span>
+                  )}
+                </CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => handleDelete(activity.id)}
+                disabled={deleteActivity.status === 'pending'}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
+    </div>
 	);
 };

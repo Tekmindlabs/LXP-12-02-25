@@ -88,83 +88,117 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, onSelect, selectedNodeId, chi
 
 	return (
 		<div>
-			<div 
+			  <div 
 				className={`
-					group relative flex items-center rounded-sm
-					${selectedNodeId === node.id ? 'bg-accent' : 'hover:bg-accent/50'}
-					${node.type === 'CHAPTER' ? 'bg-muted/30' : ''}
+				  group relative flex items-center rounded-lg
+				  ${selectedNodeId === node.id ? 'bg-accent' : 'hover:bg-accent/50'}
+				  ${node.type === 'CHAPTER' ? 'bg-muted/30' : ''}
+				  transition-colors
 				`}
 				style={{ 
-					paddingLeft: `${level * 1.5}rem`,
-					marginBottom: '2px'
+				  paddingLeft: `${level * 1}rem`,
+				  marginBottom: '0.5rem'
 				}}
-			>
+			  >
 				<div 
-					className="flex-1 flex items-center cursor-pointer p-2"
-					onClick={() => onSelect(node)}
+				  className="flex-1 flex items-center min-h-[48px] cursor-pointer px-2 py-2 touch-manipulation"
+				  onClick={() => onSelect(node)}
 				>
-					<div className="flex items-center min-w-[24px]">
-						{hasChildren && (
-							<Button 
-								variant="ghost" 
-								size="sm" 
-								className="p-0 h-4 w-4"
-								onClick={(e) => {
-									e.stopPropagation();
-									setIsExpanded(!isExpanded);
-								}}
-							>
-								{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-							</Button>
-						)}
-					</div>
-					<div className="flex items-center gap-2">
-						{getNodeIcon(node.type)}
-						<span className={`${getFontSize(node.type)}`}>{node.title}</span>
-					</div>
-				</div>
-
-				<div className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-					<Button 
+				  <div className="flex items-center min-w-[32px]">
+					{hasChildren && (
+					  <Button 
 						variant="ghost" 
 						size="sm" 
-						className="h-7 w-7 p-0 hover:bg-accent"
-						onClick={() => onSelect(node)}
-					>
-						<Edit className="h-4 w-4" />
-					</Button>
-					{addOptions.length > 0 && (
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button 
-									variant="ghost" 
-									size="sm" 
-									className="h-7 w-7 p-0 hover:bg-accent"
-								>
-									<Plus className="h-4 w-4" />
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end" className="w-[160px]">
-								{addOptions.map(({ type, label }) => (
-									<DropdownMenuItem 
-										key={type} 
-										onClick={() => handleAddChild(type)}
-										className="flex items-center gap-2"
-									>
-										{getNodeIcon(type)}
-										<span>{label}</span>
-									</DropdownMenuItem>
-								))}
-							</DropdownMenuContent>
-						</DropdownMenu>
+						className="h-8 w-8 p-0"
+						onClick={(e) => {
+						  e.stopPropagation();
+						  setIsExpanded(!isExpanded);
+						}}
+					  >
+						{isExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+					  </Button>
 					)}
+				  </div>
+				  <div className="flex items-center gap-3 flex-1 min-w-0">
+					{getNodeIcon(node.type)}
+					<span className={`${getFontSize(node.type)} truncate flex-1`}>{node.title}</span>
+				  </div>
+				</div>
+
+				{/* Mobile action buttons */}
+				<div className="absolute right-2 flex items-center gap-1 lg:hidden">
+				  <Button 
+					variant="ghost" 
+					size="sm" 
+					className="h-8 w-8 p-0"
+					onClick={(e) => {
+					  e.stopPropagation();
+					  onSelect(node);
+					}}
+				  >
+					<Edit className="h-4 w-4" />
+				  </Button>
+				  {addOptions.length > 0 && (
+					<Button 
+					  variant="ghost" 
+					  size="sm" 
+					  className="h-8 w-8 p-0"
+					  onClick={(e) => {
+						e.stopPropagation();
+						handleAddChild(addOptions[0].type);
+					  }}
+					>
+					  <Plus className="h-4 w-4" />
+					</Button>
+				  )}
+				</div>
+
+				{/* Desktop action buttons */}
+				<div className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 lg:flex hidden">
+				  <Button 
+					variant="ghost" 
+					size="sm" 
+					className="h-8 w-8 p-0"
+					onClick={(e) => {
+					  e.stopPropagation();
+					  onSelect(node);
+					}}
+				  >
+					<Edit className="h-4 w-4" />
+				  </Button>
+				  {addOptions.length > 0 && (
+					<DropdownMenu>
+					  <DropdownMenuTrigger asChild>
+						<Button 
+						  variant="ghost" 
+						  size="sm" 
+						  className="h-8 w-8 p-0"
+						  onClick={(e) => e.stopPropagation()}
+						>
+						  <Plus className="h-4 w-4" />
+						</Button>
+					  </DropdownMenuTrigger>
+					  <DropdownMenuContent align="end" className="w-[200px]">
+						{addOptions.map(({ type, label }) => (
+						  <DropdownMenuItem 
+							key={type} 
+							onClick={() => handleAddChild(type)}
+							className="flex items-center gap-3 p-3"
+						  >
+							{getNodeIcon(type)}
+							<span>{label}</span>
+						  </DropdownMenuItem>
+						))}
+					  </DropdownMenuContent>
+					</DropdownMenu>
+				  )}
 				</div>
 			</div>
 
 			{hasChildren && isExpanded && (
 				<div 
-					className="ml-4 pl-2 border-l border-border"
-					style={{ marginLeft: `${level * 1.5 + 0.5}rem` }}
+					className="border-l-2 border-border ml-4"
+					style={{ marginLeft: `${level * 1 + 1}rem` }}
 				>
 					{children.map((child) => (
 						<TreeNode
@@ -196,7 +230,6 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
 	const { data: nodes, refetch } = api.curriculum.getNodes.useQuery({ 
 		subjectId 
 	}, {
-		// Ensure nodes are treated as CurriculumNode[]
 		select: (data): CurriculumNode[] => {
 			return (data || []) as CurriculumNode[];
 		}
@@ -205,12 +238,26 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
 		onSuccess: () => refetch(),
 	});
 
-
-
-
 	const handleNodeSelect = (node: CurriculumNode) => {
 		setSelectedNodeId(node.id);
 		onNodeSelect(node);
+	};
+
+	const handleAddFirstChapter = async () => {
+		try {
+			const newNode = await createNode.mutateAsync({
+				title: "First Chapter",
+				type: "CHAPTER",
+				order: 1,
+				subjectId,
+			});
+			if (newNode) {
+				setSelectedNodeId(newNode.id);
+				onNodeSelect(newNode);
+			}
+		} catch (error) {
+			console.error("Failed to create chapter:", error);
+		}
 	};
 
 	const organizeNodes = (nodes: CurriculumNode[] = []): CurriculumNode[] => {
@@ -240,41 +287,51 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
 	const organizedNodes = organizeNodes(nodes);
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle className="text-sm font-medium">Curriculum Structure</CardTitle>
-			</CardHeader>
+		<div className="h-full">
+			<div className="p-4 border-b flex items-center justify-between">
+				<h3 className="text-sm font-medium">Curriculum Structure</h3>
+				{organizedNodes && organizedNodes.length > 0 && (
+					<Button 
+						variant="ghost" 
+						size="sm"
+						onClick={handleAddFirstChapter}
+					>
+						<Plus className="h-4 w-4 mr-2" />
+						Add Chapter
+					</Button>
+				)}
+			</div>
 
-			<CardContent>
-				<ScrollArea className="h-[calc(100vh-12rem)]">
-					{organizedNodes.map((node) => (
-						<TreeNode
-							key={node.id}
-							node={node}
-							onSelect={handleNodeSelect}
-							selectedNodeId={selectedNodeId}
-							children={node.children}
-							level={0}
-						/>
-					))}
-					{(!organizedNodes || organizedNodes.length === 0) && (
-						<div className="p-4 text-center text-muted-foreground">
+			<div className="p-4">
+				<ScrollArea className="h-[calc(100vh-12rem)] pr-4">
+					{organizedNodes && organizedNodes.length > 0 ? (
+						organizedNodes.map((node) => (
+							<TreeNode
+								key={node.id}
+								node={node}
+								onSelect={handleNodeSelect}
+								selectedNodeId={selectedNodeId}
+								children={node.children}
+								level={0}
+							/>
+						))
+					) : (
+						<div className="flex flex-col items-center justify-center p-8 text-center">
+							<p className="text-muted-foreground mb-6">
+								Start building your curriculum by adding your first chapter.
+							</p>
 							<Button 
-								variant="outline" 
-								onClick={() => createNode.mutateAsync({
-									title: "New Chapter",
-									type: "CHAPTER",
-									order: 1,
-									subjectId,
-								})}
+								size="lg"
+								onClick={handleAddFirstChapter}
+								className="w-full max-w-sm h-12"
 							>
-								<Plus className="h-4 w-4 mr-2" />
+								<Plus className="h-5 w-5 mr-2" />
 								Add First Chapter
 							</Button>
 						</div>
 					)}
 				</ScrollArea>
-			</CardContent>
-		</Card>
+			</div>
+		</div>
 	);
 };

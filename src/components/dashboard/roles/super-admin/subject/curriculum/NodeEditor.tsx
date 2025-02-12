@@ -18,9 +18,10 @@ import { BookOpen, Bookmark, BookmarkPlus } from "lucide-react";
 
 interface NodeEditorProps {
 	node: CurriculumNode;
+	onClose?: () => void;
 }
 
-export const NodeEditor: React.FC<NodeEditorProps> = ({ node }) => {
+export const NodeEditor: React.FC<NodeEditorProps> = ({ node, onClose }) => {
 	const [title, setTitle] = useState(node.title);
 	const [description, setDescription] = useState(node.description || "");
 	const [type, setType] = useState<NodeType>(node.type);
@@ -66,35 +67,47 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({ node }) => {
 	}, [type]);
 
 	const handleSave = async () => {
-		await updateNode.mutateAsync({
-			id: node.id,
-			title,
-			description,
-			type,
-			parentId
-		});
+		try {
+			await updateNode.mutateAsync({
+				id: node.id,
+				title,
+				description,
+				type,
+				parentId
+			});
+			onClose?.();
+		} catch (error) {
+			console.error("Failed to update node:", error);
+		}
+	};
+
+	const handleCancel = () => {
+		setTitle(node.title);
+		setDescription(node.description || "");
+		setType(node.type);
+		setParentId(node.parentId);
+		onClose?.();
 	};
 
 	const currentParent = allNodes?.find(n => n.id === parentId);
 
 	return (
-		<Card>
-			<CardHeader>
-				<div className="flex justify-between items-center">
-					<CardTitle>Edit Node</CardTitle>
-					<Badge variant="outline">{type}</Badge>
-				</div>
-			</CardHeader>
-			<CardContent className="space-y-4">
-				{currentParent && (
-					<Alert>
-						<AlertDescription className="flex items-center gap-2">
-							Parent: {getNodeIcon(currentParent.type)}
-							<span className="font-medium">{currentParent.title}</span>
-						</AlertDescription>
-					</Alert>
-				)}
+		<div className="space-y-6">
+			<div className="flex justify-between items-center">
+				<h2 className="text-lg font-semibold">Edit Node</h2>
+				<Badge variant="outline">{type}</Badge>
+			</div>
 
+			{currentParent && (
+				<Alert>
+					<AlertDescription className="flex items-center gap-2">
+						Parent: {getNodeIcon(currentParent.type)}
+						<span className="font-medium">{currentParent.title}</span>
+					</AlertDescription>
+				</Alert>
+			)}
+
+			<div className="space-y-4">
 				<div className="space-y-2">
 					<label className="text-sm font-medium">Title</label>
 					<Input
@@ -139,7 +152,6 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({ node }) => {
 					</div>
 				)}
 
-
 				<div className="space-y-2">
 					<label className="text-sm font-medium">Description</label>
 					<Textarea
@@ -149,15 +161,25 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({ node }) => {
 						rows={4}
 					/>
 				</div>
+			</div>
 
+			<div className="flex gap-4 pt-4">
+				<Button 
+					variant="outline"
+					onClick={handleCancel}
+					className="flex-1"
+				>
+					Cancel
+				</Button>
 				<Button 
 					onClick={handleSave} 
 					disabled={updateNode.status === 'pending'}
-					className="w-full"
+					className="flex-1"
 				>
 					Save Changes
 				</Button>
-			</CardContent>
-		</Card>
+			</div>
+		</div>
+
 	);
 };
