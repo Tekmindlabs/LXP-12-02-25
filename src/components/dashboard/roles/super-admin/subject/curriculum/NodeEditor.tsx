@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "@/utils/api";
 import { CurriculumNode, NodeType } from "@/types/curriculum";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,9 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { BookOpen, Bookmark, BookmarkPlus } from "lucide-react";
 
 interface NodeEditorProps {
 	node: CurriculumNode;
@@ -21,8 +24,46 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({ node }) => {
 	const [title, setTitle] = useState(node.title);
 	const [description, setDescription] = useState(node.description || "");
 	const [type, setType] = useState<NodeType>(node.type);
+	const [parentId, setParentId] = useState<string | undefined>(node.parentId);
 
-	const updateNode = api.curriculum.updateNode.useMutation();
+	const utils = api.useContext();
+	const { data: allNodes } = api.curriculum.getNodes.useQuery({ subjectId: node.subjectId });
+	const updateNode = api.curriculum.updateNode.useMutation({
+		onSuccess: () => {
+			utils.curriculum.getNodes.invalidate();
+		}
+	});
+
+	// Get available parent nodes based on current node type
+	const getAvailableParents = () => {
+		if (!allNodes) return [];
+		switch (type) {
+			case 'TOPIC':
+				return allNodes.filter(n => n.type === 'CHAPTER' && n.id !== node.id);
+			case 'SUBTOPIC':
+				return allNodes.filter(n => n.type === 'TOPIC' && n.id !== node.id);
+			default:
+				return [];
+		}
+	};
+
+	const getNodeIcon = (type: NodeType) => {
+		switch (type) {
+			case 'CHAPTER':
+				return <BookOpen className="h-4 w-4" />;
+			case 'TOPIC':
+				return <Bookmark className="h-4 w-4" />;
+			case 'SUBTOPIC':
+				return <BookmarkPlus className="h-4 w-4" />;
+		}
+	};
+
+	// Reset parent if type changes
+	useEffect(() => {
+		if (type === 'CHAPTER') {
+			setParentId(undefined);
+		}
+	}, [type]);
 
 	const handleSave = async () => {
 		await updateNode.mutateAsync({
@@ -30,15 +71,30 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({ node }) => {
 			title,
 			description,
 			type,
+			parentId
 		});
 	};
+
+	const currentParent = allNodes?.find(n => n.id === parentId);
 
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>Edit Node</CardTitle>
+				<div className="flex justify-between items-center">
+					<CardTitle>Edit Node</CardTitle>
+					<Badge variant="outline">{type}</Badge>
+				</div>
 			</CardHeader>
 			<CardContent className="space-y-4">
+				{currentParent && (
+					<Alert>
+						<AlertDescription className="flex items-center gap-2">
+							Parent: {getNodeIcon(currentParent.type)}
+							<span className="font-medium">{currentParent.title}</span>
+						</AlertDescription>
+					</Alert>
+				)}
+
 				<div className="space-y-2">
 					<label className="text-sm font-medium">Title</label>
 					<Input
@@ -62,6 +118,28 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({ node }) => {
 					</Select>
 				</div>
 
+				{type !== 'CHAPTER' && (
+					<div className="space-y-2">
+						<label className="text-sm font-medium">Parent Node</label>
+						<Select value={parentId} onValueChange={setParentId}>
+							<SelectTrigger>
+								<SelectValue placeholder="Select parent node" />
+							</SelectTrigger>
+							<SelectContent>
+								{getAvailableParents().map((parent) => (
+									<SelectItem key={parent.id} value={parent.id}>
+										<div className="flex items-center gap-2">
+											{getNodeIcon(parent.type)}
+											{parent.title}
+										</div>
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+				)}
+
+
 				<div className="space-y-2">
 					<label className="text-sm font-medium">Description</label>
 					<Textarea
@@ -74,7 +152,7 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({ node }) => {
 
 				<Button 
 					onClick={handleSave} 
-					disabled={updateNode.status === 'pending'}
+					disabled={updateNode.isLoading}
 					className="w-full"
 				>
 					Save Changes

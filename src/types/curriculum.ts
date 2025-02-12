@@ -1,5 +1,6 @@
+import { CurriculumResourceType } from "@prisma/client";
+
 export type NodeType = 'CHAPTER' | 'TOPIC' | 'SUBTOPIC';
-export type ResourceType = 'READING' | 'VIDEO' | 'URL' | 'DOCUMENT';
 export type ActivityType = 
 	| 'QUIZ_MULTIPLE_CHOICE'
 	| 'QUIZ_DRAG_DROP'
@@ -77,6 +78,7 @@ export interface CurriculumNode {
 	subjectId: string;
 	resources: CurriculumResource[];
 	activities: CurriculumActivity[];
+	children?: CurriculumNode[];
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -84,7 +86,7 @@ export interface CurriculumNode {
 export interface CurriculumResource {
 	id: string;
 	title: string;
-	type: ResourceType;
+	type: CurriculumResourceType;
 	content: string;
 	nodeId: string;
 	fileInfo?: FileInfo;

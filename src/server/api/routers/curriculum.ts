@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { ActivityType } from "@prisma/client";
-import { NodeType, ResourceType } from "@/types/curriculum";
+import { ActivityType, CurriculumResourceType } from "@prisma/client";
+import { NodeType } from "@/types/curriculum";
 
 export const curriculumRouter = createTRPCRouter({
 	// Node operations
@@ -72,7 +72,7 @@ export const curriculumRouter = createTRPCRouter({
 	createResource: protectedProcedure
 		.input(z.object({
 			title: z.string(),
-			type: z.enum(["READING", "VIDEO", "URL", "DOCUMENT"] as const),
+			type: z.nativeEnum(CurriculumResourceType),
 			content: z.string(),
 			nodeId: z.string(),
 			fileInfo: z.record(z.any()).optional()
@@ -87,7 +87,7 @@ export const curriculumRouter = createTRPCRouter({
 		.input(z.object({
 			id: z.string(),
 			title: z.string().optional(),
-			type: z.enum(["READING", "VIDEO", "URL", "DOCUMENT"] as const).optional(),
+			type: z.nativeEnum(CurriculumResourceType).optional(),
 			content: z.string().optional(),
 			fileInfo: z.record(z.any()).optional()
 		}))

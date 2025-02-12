@@ -1067,15 +1067,8 @@ enum AttendanceStatus {
   EXCUSED
 }
 
-enum ResourceType {
-  DOCUMENT
-  VIDEO
-  AUDIO
-  LINK
-  IMAGE
-}
-
 enum NotificationType {
+
   ANNOUNCEMENT
   ASSIGNMENT
   GRADE
@@ -1121,7 +1114,7 @@ enum NodeType {
   SUBTOPIC
 }
 
-enum ResourceType {
+enum CurriculumResourceType {
   READING
   VIDEO
   URL
@@ -1149,7 +1142,7 @@ model CurriculumNode {
 model CurriculumResource {
   id          String               @id @default(cuid())
   title       String
-  type        ResourceType
+  type        CurriculumResourceType
   content     String
   nodeId      String
   node        CurriculumNode       @relation(fields: [nodeId], references: [id])
