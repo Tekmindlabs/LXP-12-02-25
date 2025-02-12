@@ -50,16 +50,32 @@ export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
 
 
 
-	const formatGrade = (grade: number | undefined, type: string) => {
-		const numGrade = grade ?? 0; // Handle undefined grades
+	const formatGrade = (grade: number | undefined, type: string, assessmentSystem: any) => {
+		const numGrade = grade ?? 0;
+		
 		switch (type) {
 			case 'CGPA':
-				return numGrade.toFixed(2);
+				const gradePoint = assessmentSystem.cgpaConfig?.gradePoints?.find(
+					(gp: any) => numGrade >= gp.minPercentage && numGrade <= gp.maxPercentage
+				);
+				return gradePoint 
+					? `${gradePoint.letter} (${numGrade.toFixed(2)})` 
+					: numGrade.toFixed(2);
+				
 			case 'MARKING_SCHEME':
-			case 'RUBRIC':
-				return `${numGrade.toFixed(1)}%`;
+				const markingScheme = assessmentSystem.markingSchemes?.[0];
+				if (markingScheme) {
+					const grade = markingScheme.gradingScale?.find(
+						(g: any) => numGrade >= g.minPercentage && numGrade <= g.maxPercentage
+					);
+					return grade 
+						? `${grade.grade} (${numGrade.toFixed(2)}%)` 
+						: `${numGrade.toFixed(2)}%`;
+				}
+				return `${numGrade.toFixed(2)}%`;
+				
 			default:
-				return numGrade.toString();
+				return `${numGrade.toFixed(2)}%`;
 		}
 	};
 
@@ -102,12 +118,17 @@ export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
 									<td key={period.id}>
 										{formatGrade(
 											termGrade.periodGrades?.[period.id]?.percentage,
-											gradeBook.assessmentSystem.type
+											gradeBook.assessmentSystem.type,
+											gradeBook.assessmentSystem
 										)}
 									</td>
 								))}
 								<td>
-									{formatGrade(termGrade.finalGrade ?? undefined, gradeBook.assessmentSystem.type)}
+									{formatGrade(
+										termGrade.finalGrade ? Number(termGrade.finalGrade) : undefined,
+										gradeBook.assessmentSystem.type,
+										gradeBook.assessmentSystem
+									)}
 								</td>
 								<td>
 									<span className={termGrade.isPassing ? 'text-green-500' : 'text-red-500'}>

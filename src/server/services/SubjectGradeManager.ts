@@ -1,15 +1,20 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, AssessmentSystemType } from '@prisma/client';
 import { AssessmentService } from './AssessmentService';
 import { SubjectAssessmentConfig } from '../../types/grades';
 
 interface Assessment {
 	id: string;
-	type: string;
+	type: AssessmentSystemType;
+	markingSchemeId?: string;
+	rubricId?: string;
+	totalPoints: number;
 	[key: string]: any;
 }
 
 interface Submission {
 	activityId: string;
+	obtainedMarks: number | null;
+	rubricScores?: any;
 	[key: string]: any;
 }
 
@@ -63,7 +68,7 @@ export class SubjectGradeManager {
 			}
 		});
 
-		return activities.flatMap(activity => activity.submissions);
+		return activities.flatMap(activity => activity.submissions) as Submission[];
 	}
 
 	private getAssessmentWeight(
@@ -73,13 +78,8 @@ export class SubjectGradeManager {
 		return weightageDistribution[assessmentType.toLowerCase()] || 1;
 	}
 
-	private async calculateSubmissionPercentage(
-		_submission: Submission,
-		_assessment: Assessment
-	): Promise<number> {
-		// Implementation
-		return 0;
-	}
+
+
 
 	private checkPassingCriteria(
 		percentage: number,
@@ -101,21 +101,18 @@ export class SubjectGradeManager {
 			include: {
 				term: {
 					include: {
-						academicTerms: {
+						termStructure: {
 							include: {
-								termStructure: {
+								program: {
 									include: {
-										program: {
-											include: {
-												assessmentSystem: true
-											}
-										}
+										assessmentSystem: true
 									}
 								}
 							}
 						}
 					}
 				}
+
 			}
 		});
 
@@ -134,14 +131,14 @@ export class SubjectGradeManager {
 
 			// Handle different assessment types
 			switch (assessment.type) {
-				case 'MARKING_SCHEME':
+				case AssessmentSystemType.MARKING_SCHEME:
 					percentage = await this.assessmentService.calculatePercentageFromMarkingScheme(
 						assessment.markingSchemeId!,
 						submission.obtainedMarks || 0,
 						assessment.totalPoints
 					);
 					break;
-				case 'RUBRIC':
+				case AssessmentSystemType.RUBRIC:
 					if (submission.rubricScores) {
 						percentage = await this.assessmentService.calculatePercentageFromRubric(
 							assessment.rubricId!,
