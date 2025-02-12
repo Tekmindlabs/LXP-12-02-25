@@ -27,6 +27,7 @@ export const ClassList = ({ classes, onSelect }: ClassListProps) => {
                             <TableHead className="w-[200px]">Name</TableHead>
                             <TableHead className="w-[200px]">Program</TableHead>
                             <TableHead className="w-[200px]">Class Group</TableHead>
+                            <TableHead className="w-[150px]">Gradebook Status</TableHead>
                             <TableHead className="w-[100px] text-center">Capacity</TableHead>
                             <TableHead className="w-[100px] text-center">Students</TableHead>
                             <TableHead>Teachers</TableHead>
@@ -40,6 +41,11 @@ export const ClassList = ({ classes, onSelect }: ClassListProps) => {
                                 <TableCell className="font-medium">{cls.name}</TableCell>
                                 <TableCell>{cls.classGroup.program.name}</TableCell>
                                 <TableCell>{cls.classGroup.name}</TableCell>
+                                <TableCell>
+                                    <Badge variant={cls.gradeBook ? "default" : "secondary"}>
+                                        {cls.gradeBook ? "Initialized" : "Pending"}
+                                    </Badge>
+                                </TableCell>
                                 <TableCell className="text-center">{cls.capacity}</TableCell>
                                 <TableCell className="text-center">
                                     <Badge variant="outline">

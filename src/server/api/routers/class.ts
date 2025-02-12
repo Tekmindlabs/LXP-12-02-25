@@ -267,7 +267,7 @@ export const classRouter = createTRPCRouter({
 			// Check user roles and permissions
 			const userRoles = ctx.session?.user?.roles || [];
 			const hasAccess = userRoles.some(role => 
-				[DefaultRoles.ADMIN, DefaultRoles.SUPER_ADMIN, DefaultRoles.TEACHER].includes(role)
+				[DefaultRoles.ADMIN, DefaultRoles.SUPER_ADMIN, DefaultRoles.TEACHER].includes(role as "admin" | "super-admin" | "teacher")
 			);
 
 			if (!hasAccess) {
@@ -279,7 +279,7 @@ export const classRouter = createTRPCRouter({
 
 			try {
 				// For teachers, only return their assigned classes
-				if (userRoles.includes(DefaultRoles.TEACHER) && !userRoles.some(role => [DefaultRoles.ADMIN, DefaultRoles.SUPER_ADMIN].includes(role))) {
+				if (userRoles.includes(DefaultRoles.TEACHER) && !userRoles.some(role => [DefaultRoles.ADMIN, DefaultRoles.SUPER_ADMIN].includes(role as "admin" | "super-admin"))) {
 					return ctx.prisma.class.findMany({
 						where: {
 							teachers: {
@@ -536,7 +536,7 @@ export const classRouter = createTRPCRouter({
 			const performanceData = activities.map(activity => ({
 				date: activity.createdAt.toISOString().split('T')[0],
 				averageScore: activity.submissions.reduce((acc, sub) => 
-					acc + (sub.obtainedMarks / sub.totalMarks * 100), 0) / 
+					acc + ((sub.obtainedMarks ?? 0) / (sub.totalMarks ?? 1) * 100), 0) / 
 					(activity.submissions.length || 1)
 			}));
 
@@ -552,7 +552,7 @@ export const classRouter = createTRPCRouter({
 				}
 				
 				const avgScore = activity.submissions.reduce((sum, sub) => 
-					sum + (sub.obtainedMarks / sub.totalMarks * 100), 0) / 
+					sum + ((sub.obtainedMarks ?? 0) / (sub.totalMarks ?? 1) * 100), 0) / 
 					(activity.submissions.length || 1);
 				
 				acc[subjectName].totalScore += avgScore;
@@ -617,5 +617,43 @@ export const classRouter = createTRPCRouter({
 					? trends.reduce((acc, day) => acc + day.attendanceRate, 0) / trends.length 
 					: 0
 			};
+		}),
+
+	getGradebook: protectedProcedure
+		.input(z.object({
+			classId: z.string(),
+		}))
+		.query(async ({ ctx, input }) => {
+			const gradeBook = await ctx.prisma.gradeBook.findUnique({
+				where: {
+					classId: input.classId,
+				},
+				include: {
+					assessmentSystem: true,
+					termStructure: {
+						include: {
+							academicTerms: {
+								include: {
+									assessmentPeriods: true,
+								},
+							},
+						},
+					},
+					subjectRecords: {
+						include: {
+							subject: true,
+						},
+					},
+				},
+			});
+
+			if (!gradeBook) {
+				throw new TRPCError({
+					code: 'NOT_FOUND',
+					message: 'Gradebook not found for this class',
+				});
+			}
+
+			return gradeBook;
 		}),
 });

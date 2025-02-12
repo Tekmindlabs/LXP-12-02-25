@@ -1,84 +1,38 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { api } from '@/utils/api';
 import { Card } from '@/components/ui/card';
 import { Table } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SubjectTermGrade, AssessmentPeriodGrade } from '@/types/grades';
+import type { Class } from '@/types/class';
 
 interface GradeBookProps {
 	classId: string;
 }
 
-interface SubjectGrade {
-	termId: string;
-	periodGrades: Record<string, AssessmentPeriodGrade>;
-	finalGrade: number;
-	totalMarks: number;
-	percentage: number;
-	isPassing: boolean;
-	gradePoints: number;
-}
-
-interface AssessmentPeriodGrade {
-	periodId: string;
-	obtainedMarks: number;
-	totalMarks: number;
-	percentage: number;
-	weight: number;
-	isPassing: boolean;
-}
-
-interface GradeBook {
-	id: string;
-	subjectRecords: Array<{
-		id: string;
-		subjectId: string;
-		subject: {
-			name: string;
-			code: string;
-		};
-		termGrades: Record<string, SubjectGrade>;
-		assessmentPeriodGrades: Record<string, AssessmentPeriodGrade>;
-	}>;
-	assessmentSystem: {
-		id: string;
-		name: string;
-		type: 'MARKING_SCHEME' | 'RUBRIC' | 'CGPA' | 'HYBRID';
-	};
-}
-
 export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
-	const [gradeBook, setGradeBook] = useState<GradeBook | null>(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
 	const [activeTerm, setActiveTerm] = useState<string>();
-	const [activeSubject, setActiveSubject] = useState<string>();
+
+	const { data: gradeBook, isLoading, error } = api.class.getGradebook.useQuery(
+		{ classId },
+		{
+			staleTime: 5 * 60 * 1000, // 5 minutes
+			enabled: !!classId
+		}
+	);
 
 	useEffect(() => {
-		fetchGradeBook();
-	}, [classId]);
-
-	const fetchGradeBook = async () => {
-		try {
-			const response = await fetch(`/api/gradebook/${classId}`);
-			if (!response.ok) {
-				throw new Error('Failed to fetch gradebook');
-			}
-			const data = await response.json();
-			setGradeBook(data);
-			// Set initial active term if available
-			if (data.subjectRecords[0]?.termGrades) {
-				setActiveTerm(Object.keys(data.subjectRecords[0].termGrades)[0]);
-			}
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'An error occurred');
-		} finally {
-			setLoading(false);
+		if (gradeBook?.termStructure?.academicTerms?.[0]?.id) {
+			setActiveTerm(gradeBook.termStructure.academicTerms[0].id);
 		}
-	};
+	}, [gradeBook]);
+
+
+
 
 	const formatGrade = (grade: number, type: string) => {
 		switch (type) {
@@ -95,32 +49,42 @@ export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
 	const renderGradeTable = () => {
 		if (!gradeBook || !activeTerm) return null;
 
+		const activePeriods = gradeBook.termStructure.academicTerms
+			.find((term: { id: string }) => term.id === activeTerm)
+			?.assessmentPeriods || [];
+
 		return (
 			<Table>
 				<thead>
 					<tr>
 						<th>Subject</th>
-						<th>Assessment Periods</th>
+						{activePeriods.map((period: { id: string; name: string; weight: number }) => (
+							<th key={period.id}>
+								{period.name} ({period.weight}%)
+							</th>
+						))}
 						<th>Final Grade</th>
 						<th>Status</th>
 					</tr>
 				</thead>
 				<tbody>
 					{gradeBook.subjectRecords.map((record) => {
-						const termGrade = record.termGrades[activeTerm];
+						const termGrade = record.termGrades ? 
+							(JSON.parse(record.termGrades as string) || {})[activeTerm] : null;
 						if (!termGrade) return null;
+
 
 						return (
 							<tr key={record.id}>
 								<td>{record.subject.name}</td>
-								<td>
-									{Object.entries(termGrade.periodGrades).map(([periodId, grade]) => (
-										<div key={periodId}>
-											{formatGrade(grade.percentage, gradeBook.assessmentSystem.type)}
-											{` (${grade.weight}%)`}
-										</div>
-									))}
-								</td>
+								{activePeriods.map((period: { id: string }) => (
+									<td key={period.id}>
+										{formatGrade(
+											termGrade.periodGrades[period.id]?.percentage || 0,
+											gradeBook.assessmentSystem.type
+										)}
+									</td>
+								))}
 								<td>
 									{formatGrade(termGrade.finalGrade, gradeBook.assessmentSystem.type)}
 								</td>
@@ -137,7 +101,7 @@ export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
 		);
 	};
 
-	if (loading) {
+	if (isLoading) {
 		return (
 			<div className="flex justify-center items-center h-32">
 				<Loader2 className="h-8 w-8 animate-spin" />
@@ -145,11 +109,11 @@ export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
 		);
 	}
 
-	if (error) {
+	if (error instanceof Error) {
 		return (
 			<Card className="p-4">
-				<p className="text-red-500">{error}</p>
-				<Button onClick={() => fetchGradeBook()}>Retry</Button>
+				<p className="text-red-500">{error.message}</p>
+				<Button onClick={() => window.location.reload()}>Retry</Button>
 			</Card>
 		);
 	}
@@ -171,9 +135,9 @@ export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
 						<SelectValue placeholder="Select Term" />
 					</SelectTrigger>
 					<SelectContent>
-						{Object.keys(gradeBook.subjectRecords[0]?.termGrades || {}).map((termId) => (
-							<SelectItem key={termId} value={termId}>
-								Term {termId}
+						{gradeBook?.termStructure?.academicTerms.map((term) => (
+							<SelectItem key={term.id} value={term.id}>
+								{term.name}
 							</SelectItem>
 						))}
 					</SelectContent>

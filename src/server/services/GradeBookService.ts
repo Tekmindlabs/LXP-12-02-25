@@ -1,10 +1,10 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import { SubjectGradeManager } from './SubjectGradeManager';
 import { TermManagementService } from "./TermManagementService";
 import { AssessmentService } from "./AssessmentService";
 import { BatchProcessingConfig } from '../../types/grades';
 
-type PrismaTransaction = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use'>;
+type PrismaTransaction = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
 interface CreateClassInput {
     name: string;
@@ -57,14 +57,13 @@ interface CumulativeGradeData {
 
 export class GradeBookService {
     private subjectGradeManager: SubjectGradeManager;
-    private termService: TermManagementService;
     private assessmentService: AssessmentService;
 
     constructor(private db: PrismaClient) {
         this.subjectGradeManager = new SubjectGradeManager(db);
-        this.termService = new TermManagementService(db);
         this.assessmentService = new AssessmentService(db);
     }
+
 
 
 
@@ -99,23 +98,23 @@ export class GradeBookService {
             throw new Error('Assessment system or term structure not found');
         }
 
-        await this.db.$transaction(async (tx: PrismaTransaction) => {
-            const gradeBook = await tx.gradeBook.create({
+        await this.db.$transaction(async (prisma) => {
+            const gradeBook = await prisma.gradeBook.create({
                 data: {
                     classId,
                     assessmentSystemId: assessmentSystem.id,
                     termStructureId: termStructure.id,
                     subjectRecords: {
                         create: classData.classGroup.subjects.map((subject: Subject) => ({
-                            subjectId: subject.id,
-                            termGrades: null,
-                            assessmentPeriodGrades: null
+                            subject: { connect: { id: subject.id } },
+                            termGrades: { set: null },
+                            assessmentPeriodGrades: { set: null }
                         }))
                     }
                 }
             });
 
-            await tx.class.update({
+            await prisma.class.update({
                 where: { id: classId },
                 data: { termStructureId: termStructure.id }
             });
@@ -192,8 +191,8 @@ export class GradeBookService {
             data: classGroup.subjects.map((subject: Subject) => ({
                 gradeBookId,
                 subjectId: subject.id,
-                termGrades: null,
-                assessmentPeriodGrades: null
+                termGrades: Prisma.JsonNull,
+                assessmentPeriodGrades: Prisma.JsonNull
             }))
         });
     }
@@ -287,7 +286,7 @@ export class GradeBookService {
                 name: `${classGroup.program.assessmentSystem.name} - Class Copy`,
                 type: classGroup.program.assessmentSystem.type,
                 programId: classGroup.program.id,
-                cgpaConfig: classGroup.program.assessmentSystem.cgpaConfig
+                cgpaConfig: classGroup.program.assessmentSystem.cgpaConfig ?? Prisma.JsonNull
             }
         });
 
@@ -376,9 +375,8 @@ export class GradeBookService {
             throw new Error('Activity not found');
         }
 
-        await this.db.$transaction(async (tx: PrismaTransaction) => {
-            // Update activity submission
-            await tx.activitySubmission.upsert({
+        await this.db.$transaction(async (prisma) => {
+            await prisma.activitySubmission.upsert({
                 where: {
                     activityId_studentId: {
                         activityId: data.activityId,
@@ -391,7 +389,9 @@ export class GradeBookService {
                     obtainedMarks: data.grade,
                     status: 'GRADED',
                     gradedAt: new Date(),
-                    gradedBy: 'SYSTEM'
+                    gradedBy: 'SYSTEM',
+                    gradingType: 'AUTOMATIC',
+                    totalMarks: 100
                 },
                 update: {
                     obtainedMarks: data.grade,
@@ -400,13 +400,13 @@ export class GradeBookService {
                 }
             });
 
-            // Record grade history
-            await tx.gradeHistory.create({
+            await prisma.gradeHistory.create({
                 data: {
                     studentId: data.studentId,
                     subjectId: activity.subjectId,
                     assessmentId: data.activityId,
                     gradeValue: data.grade,
+                    oldValue: null,
                     modifiedBy: 'SYSTEM',
                     reason: 'Activity grade update'
                 }

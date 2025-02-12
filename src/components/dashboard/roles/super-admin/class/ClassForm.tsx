@@ -39,8 +39,26 @@ interface ClassFormProps {
 		name: string;
 		capacity: number;
 		status: Status;
-		classGroup: { id: string };
-		teachers: { teacher: { id: string } }[];
+		classTutorId?: string;
+		classGroup: {
+			id: string;
+			program: {
+				assessmentSystem?: {
+					name: string;
+				};
+				termStructures?: {
+					name: string;
+				}[];
+			};
+		};
+		teachers: {
+			teacher: {
+				id: string;
+			};
+		}[];
+		gradeBook?: {
+			id: string;
+		};
 	};
 	classGroups: { id: string; name: string }[];
 	teachers: { id: string; user: { name: string } }[];
@@ -49,7 +67,7 @@ interface ClassFormProps {
 export const ClassForm = ({ isOpen, onClose, selectedClass, classGroups, teachers }: ClassFormProps) => {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const { toast } = useToast();
-	const utils = api.useContext();
+	const utils = api.useUtils();
 
 	const form = useForm<FormValues>({
 		resolver: zodResolver(formSchema),
@@ -125,10 +143,11 @@ export const ClassForm = ({ isOpen, onClose, selectedClass, classGroups, teacher
 			<Form {...form}>
 			  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 				<Tabs defaultValue="basic" className="w-full">
-				  <TabsList className="grid w-full grid-cols-3">
+				  <TabsList className="grid w-full grid-cols-4">
 					<TabsTrigger value="basic">Basic Information</TabsTrigger>
 					<TabsTrigger value="teachers">Teachers</TabsTrigger>
 					<TabsTrigger value="additional">Additional Details</TabsTrigger>
+					<TabsTrigger value="settings">Inherited Settings</TabsTrigger>
 				  </TabsList>
 
 				  <TabsContent value="basic" className="space-y-4">
@@ -318,6 +337,33 @@ export const ClassForm = ({ isOpen, onClose, selectedClass, classGroups, teacher
 					  </FormItem>
 					)}
 				  />
+				</div>
+			  </TabsContent>
+
+			  <TabsContent value="settings" className="space-y-4">
+				<div className="space-y-4">
+					<div className="grid gap-4 border rounded-lg p-4">
+						<div>
+							<h3 className="font-medium mb-2">Assessment System</h3>
+							<p className="text-sm text-muted-foreground">
+								{selectedClass?.classGroup?.program?.assessmentSystem?.name || 
+								"Will inherit from class group"}
+							</p>
+						</div>
+						<div>
+							<h3 className="font-medium mb-2">Term Structure</h3>
+							<p className="text-sm text-muted-foreground">
+								{selectedClass?.classGroup?.program?.termStructures?.[0]?.name || 
+								"Will inherit from class group"}
+							</p>
+						</div>
+						<div>
+							<h3 className="font-medium mb-2">Gradebook Status</h3>
+							<p className="text-sm text-muted-foreground">
+								{selectedClass?.gradeBook ? "Initialized" : "Will be initialized on creation"}
+							</p>
+						</div>
+					</div>
 				</div>
 			  </TabsContent>
 			</Tabs>

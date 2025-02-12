@@ -1,4 +1,5 @@
-import { Status } from "@prisma/client";
+import { Status, AssessmentSystemType } from "@prisma/client";
+import { SubjectTermGrade, AssessmentPeriodGrade } from "./grades";
 
 export interface Class {
     id: string;
@@ -8,6 +9,37 @@ export interface Class {
     description?: string;
     academicYear?: string;
     semester?: string;
+    classTutorId?: string;
+    gradeBook?: {
+        id: string;
+        assessmentSystem: {
+            id: string;
+            name: string;
+            type: AssessmentSystemType;
+        };
+        termStructure: {
+            id: string;
+            name: string;
+            academicTerms: Array<{
+                id: string;
+                name: string;
+                assessmentPeriods: Array<{
+                    id: string;
+                    name: string;
+                    weight: number;
+                }>;
+            }>;
+        };
+        subjectRecords: Array<{
+            id: string;
+            subject: {
+                id: string;
+                name: string;
+            };
+            termGrades: string | null; // JSON string
+            assessmentPeriodGrades: string | null; // JSON string
+        }>;
+    };
     classGroup: {
         id: string;
         name: string;

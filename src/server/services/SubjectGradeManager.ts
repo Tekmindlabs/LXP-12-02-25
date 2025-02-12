@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { AssessmentService } from './AssessmentService';
 import { SubjectAssessmentConfig } from '../../types/grades';
 
@@ -42,9 +42,9 @@ export class SubjectGradeManager {
 	}
 
 	private async getSubmissionsForPeriod(
-		subjectId: string,
-		periodId: string,
-		studentId: string
+		_subjectId: string,
+		_periodId: string,
+		_studentId: string
 	): Promise<Submission[]> {
 		// Implementation
 		return [];
@@ -58,8 +58,8 @@ export class SubjectGradeManager {
 	}
 
 	private async calculateSubmissionPercentage(
-		submission: Submission,
-		assessment: Assessment
+		_submission: Submission,
+		_assessment: Assessment
 	): Promise<number> {
 		// Implementation
 		return 0;
@@ -67,11 +67,11 @@ export class SubjectGradeManager {
 
 	private checkPassingCriteria(
 		percentage: number,
-		submissions: Submission[],
 		config: SubjectAssessmentConfig
 	): boolean {
 		return percentage >= (config.passingCriteria.minPercentage || 50);
 	}
+
 
 	async calculateAssessmentPeriodGrade(
 		subjectId: string,
@@ -101,7 +101,7 @@ export class SubjectGradeManager {
 
 		const finalPercentage = totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
 		const gradePoints = await this.assessmentService.calculateGPA(finalPercentage, assessmentSystemId);
-		const isPassing = this.checkPassingCriteria(finalPercentage, submissions, config);
+		const isPassing = this.checkPassingCriteria(finalPercentage, config);
 
 		return {
 			periodId,
@@ -171,18 +171,18 @@ export class SubjectGradeManager {
 	async initializeSubjectGrades(
 		gradeBookId: string,
 		subject: any,
-		termStructure: any
+		_termStructure: any // Prefix with _ since it's unused
 	): Promise<void> {
-		// No need to pre-initialize grades, they will be calculated on-demand
 		await this.db.subjectGradeRecord.create({
 			data: {
 				gradeBookId,
 				subjectId: subject.id,
-				termGrades: null,
-				assessmentPeriodGrades: null
+				termGrades: Prisma.JsonNull,
+				assessmentPeriodGrades: Prisma.JsonNull
 			}
 		});
 	}
+
 
 
 	async updateSubjectGradeRecord(
@@ -193,39 +193,35 @@ export class SubjectGradeManager {
 	): Promise<void> {
 		const [termGrade, existingRecord] = await Promise.all([
 			this.calculateSubjectTermGrade(subjectId, termId, studentId, gradeBookId),
-			this.db.subjectGradeRecord.findUnique({
+			this.db.subjectGradeRecord.findFirst({
 				where: {
-					gradeBookId_subjectId: {
-						gradeBookId,
-						subjectId
-					}
+					gradeBookId,
+					subjectId
 				}
 			})
 		]);
 		
-		const existingTermGrades = existingRecord?.termGrades || {};
+		const existingTermGrades = (existingRecord?.termGrades as Record<string, any>) || {};
+		const updatedTermGrades = JSON.stringify({
+			...existingTermGrades,
+			[termId]: termGrade
+		});
 		
 		await this.db.subjectGradeRecord.upsert({
 			where: {
-				gradeBookId_subjectId: {
-					gradeBookId,
-					subjectId
-				}
+				id: existingRecord?.id ?? '',
 			},
 			update: {
-				termGrades: {
-					...existingTermGrades,
-					[termId]: termGrade
-				}
+				termGrades: updatedTermGrades
 			},
 			create: {
 				gradeBookId,
 				subjectId,
-				termGrades: {
-					[termId]: termGrade
-				}
+				termGrades: JSON.stringify({ [termId]: termGrade }),
+				assessmentPeriodGrades: Prisma.JsonNull
 			}
 		});
+
 
 
 		// Record grade history
@@ -241,7 +237,9 @@ export class SubjectGradeManager {
 			data: {
 				studentId,
 				subjectId,
+				assessmentId: termGrade.termId, // Use termId as assessmentId
 				gradeValue: termGrade.finalGrade,
+				oldValue: null,
 				modifiedBy: 'SYSTEM',
 				reason: 'Term grade calculation'
 			}
