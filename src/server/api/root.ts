@@ -1,6 +1,7 @@
 import { createTRPCRouter } from "@/server/api/trpc";
 import { settingsRouter } from "./routers/settings";
 import { userRouter } from "./routers/user";
+import { curriculumRouter } from "./routers/curriculum";
 import { roleRouter } from "./routers/role";
 import { gradebookRouter } from "./routers/gradebook";
 import { attendanceRouter } from "./routers/attendance";
@@ -54,6 +55,7 @@ export const appRouter = createTRPCRouter({
   historicalData: historicalDataRouter,
   gradebook: gradebookRouter,
   assessment: assessmentRouter,
+  curriculum: curriculumRouter,
 });
 
 

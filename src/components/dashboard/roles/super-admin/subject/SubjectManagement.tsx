@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle } from "lucide-react";
 import { Status } from "@prisma/client";
 import { api } from "@/utils/api";
 import { SubjectList } from "./SubjectList";
 import { SubjectForm } from "./SubjectForm";
+import { CurriculumManager } from "./curriculum/CurriculumManager";
 
 interface SearchFilters {
 	search: string;
@@ -21,6 +23,7 @@ interface SearchFilters {
 
 export const SubjectManagement = () => {
 	const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
+	const [activeTab, setActiveTab] = useState<'list' | 'curriculum'>('list');
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [filters, setFilters] = useState<SearchFilters>({
 		search: "",
@@ -54,15 +57,28 @@ export const SubjectManagement = () => {
 	return (
 		<div className="space-y-4">
 			<Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Subject Management</CardTitle>
-          <Button onClick={handleCreate}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create Subject
-          </Button>
-        </CardHeader>
+				<CardHeader className="flex flex-row items-center justify-between">
+					<div className="flex items-center space-x-4">
+						<CardTitle>Subject Management</CardTitle>
+						<Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'list' | 'curriculum')}>
+							<TabsList>
+								<TabsTrigger value="list">Subjects</TabsTrigger>
+								{selectedSubjectId && (
+									<TabsTrigger value="curriculum">Curriculum</TabsTrigger>
+								)}
+							</TabsList>
+						</Tabs>
+					</div>
+					{activeTab === 'list' && (
+						<Button onClick={handleCreate}>
+							<PlusCircle className="mr-2 h-4 w-4" />
+							Create Subject
+						</Button>
+					)}
+				</CardHeader>
 				<CardContent>
-					<div className="mb-6 space-y-4">
+					<TabsContent value="list">
+						<div className="mb-6 space-y-4">
 						<div className="flex space-x-4">
 							<Input
 								placeholder="Search subjects..."
@@ -127,27 +143,37 @@ export const SubjectManagement = () => {
 
 					<div className="space-y-4">
 						<SubjectList 
-						  subjects={subjects?.map(subject => ({
-							...subject,
-							classGroups: subject.classGroups.map(group => ({
-								name: group.name,
-								program: {
-									name: group.program.name || ''  // Provide default empty string
-								}
-							}))
-						})) || []}
-						  onSelect={handleEdit}
+							subjects={subjects?.map(subject => ({
+								...subject,
+								classGroups: subject.classGroups.map(group => ({
+									name: group.name,
+									program: {
+										name: group.program.name || ''
+									}
+								}))
+							})) || []}
+							onSelect={(id) => {
+								setSelectedSubjectId(id);
+								setActiveTab('curriculum');
+							}}
 						/>
 						<Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-						  <SubjectForm 
-							selectedSubject={subjects?.find(s => s.id === selectedSubjectId)}
-							classGroups={classGroups || []}
-							teachers={teachers || []}
-							onSuccess={handleFormSuccess}
-						  />
+							<SubjectForm 
+								selectedSubject={subjects?.find(s => s.id === selectedSubjectId)}
+								classGroups={classGroups || []}
+								teachers={teachers || []}
+								onSuccess={handleFormSuccess}
+							/>
 						</Dialog>
 					</div>
-				</CardContent>
+				</TabsContent>
+				
+				<TabsContent value="curriculum">
+					{selectedSubjectId && (
+						<CurriculumManager subjectId={selectedSubjectId} />
+					)}
+				</TabsContent>
+			</CardContent>
 			</Card>
 		</div>
 	);

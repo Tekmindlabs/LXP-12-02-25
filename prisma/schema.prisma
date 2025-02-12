@@ -283,6 +283,7 @@ model Subject {
   attendance         Attendance[]
   gradeRecords      SubjectGradeRecord[]
   subjectConfig      SubjectConfig?
+  curriculumNodes    CurriculumNode[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
@@ -1112,6 +1113,67 @@ enum ActivityConfiguration {
   PROJECT
   EXAM
   PRESENTATION
+}
+
+enum CurriculumNodeType {
+  CHAPTER
+  TOPIC
+  SUBTOPIC
+}
+
+enum CurriculumResourceType {
+  READING
+  VIDEO
+  URL
+  DOCUMENT
+}
+
+model CurriculumNode {
+  id          String               @id @default(cuid())
+  title       String
+  description String?
+  type        CurriculumNodeType
+  parentId    String?
+  order       Int
+  subjectId   String
+  subject     Subject              @relation(fields: [subjectId], references: [id])
+  resources   CurriculumResource[]
+  activities  CurriculumActivity[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([subjectId])
+  @@map("curriculum_nodes")
+}
+
+model CurriculumResource {
+  id          String               @id @default(cuid())
+  title       String
+  type        CurriculumResourceType
+  content     String
+  nodeId      String
+  node        CurriculumNode       @relation(fields: [nodeId], references: [id])
+  fileInfo    Json?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([nodeId])
+  @@map("curriculum_resources")
+}
+
+model CurriculumActivity {
+  id          String         @id @default(cuid())
+  title       String
+  type        ActivityType
+  content     Json
+  isGraded    Boolean        @default(false)
+  nodeId      String
+  node        CurriculumNode @relation(fields: [nodeId], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([nodeId])
+  @@map("curriculum_activities")
 }
 
 // Add Term Result and CGPA Record Models
