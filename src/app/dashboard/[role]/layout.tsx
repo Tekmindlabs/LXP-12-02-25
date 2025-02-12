@@ -211,22 +211,20 @@ export default async function RoleLayout({
 	const isSuperAdmin = currentRole === 'super-admin';
 
 	return (
-
-
-
-	<div className="flex min-h-screen">
-		<aside className="w-64 border-r bg-background">
+		<div className="flex min-h-screen relative">
 			{isSuperAdmin ? (
 				<SuperAdminSidebar />
 			) : (
-				<SidebarNav items={navItems} />
+				<aside className="w-64 border-r bg-background">
+					<SidebarNav items={navItems} />
+				</aside>
 			)}
-		</aside>
-		<div className="flex-1 flex flex-col">
-			<main className="flex-1 p-6">
-				{children}
-			</main>
+			<div className="flex-1 flex flex-col">
+				<main className="flex-1 p-6 lg:ml-0">
+					{children}
+				</main>
+			</div>
 		</div>
-	</div>
 	);
+
 }

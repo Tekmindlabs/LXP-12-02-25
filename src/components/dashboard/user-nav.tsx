@@ -12,12 +12,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSession, signOut } from "next-auth/react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 export function UserNav() {
   const { data: session } = useSession();
-  const router = useRouter();
 
   if (!session?.user) return null;
 
@@ -64,6 +63,12 @@ export function UserNav() {
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href={`/dashboard/${userRole}/notification`}>Notifications</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem className="sm:hidden">
+            <div className="flex items-center justify-between w-full">
+              Theme
+              <ThemeToggle />
+            </div>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
