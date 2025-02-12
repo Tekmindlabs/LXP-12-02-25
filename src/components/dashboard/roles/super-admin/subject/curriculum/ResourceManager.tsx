@@ -3,6 +3,10 @@ import { api } from "@/utils/api";
 import { CurriculumResourceType } from "@/types/curriculum";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
 import {
 	Select,
 	SelectContent,
@@ -30,12 +34,26 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 	const [type, setType] = useState<CurriculumResourceType>("READING");
 	const [content, setContent] = useState("");
 
+	const editor = useEditor({
+		extensions: [
+			StarterKit,
+			Placeholder.configure({
+				placeholder: 'Start writing your content...'
+			})
+		],
+		content: '',
+		onUpdate: ({ editor }) => {
+			setContent(editor.getHTML());
+		}
+	});
+
 	const createResource = api.curriculum.createResource.useMutation({
 		onSuccess: () => {
 			onSuccess();
 			setTitle("");
 			setType("READING");
 			setContent("");
+			editor?.commands.setContent('');
 		},
 	});
 
@@ -46,6 +64,35 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 			content,
 			nodeId,
 		});
+	};
+
+	const renderContentInput = () => {
+		switch (type) {
+			case "READING":
+				return (
+					<div className="min-h-[300px] w-full border rounded-lg p-4">
+						<EditorContent editor={editor} className="h-full prose max-w-none" />
+					</div>
+				);
+			case "VIDEO":
+			case "URL":
+				return (
+					<Input
+						value={content}
+						onChange={(e) => setContent(e.target.value)}
+						placeholder={`Enter ${type.toLowerCase()} URL`}
+					/>
+				);
+			case "DOCUMENT":
+				return (
+					<Textarea
+						value={content}
+						onChange={(e) => setContent(e.target.value)}
+						placeholder="Document content"
+						rows={4}
+					/>
+				);
+		}
 	};
 
 	return (
@@ -67,11 +114,7 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 						<SelectItem value="DOCUMENT">Document</SelectItem>
 					</SelectContent>
 				</Select>
-				<Input
-					value={content}
-					onChange={(e) => setContent(e.target.value)}
-					placeholder="Resource content or URL"
-				/>
+				{renderContentInput()}
 				<div className="flex justify-end space-x-2">
 					<Button variant="outline" onClick={onCancel}>Cancel</Button>
 					<Button onClick={handleSubmit} disabled={createResource.isLoading}>Add Resource</Button>
@@ -152,9 +195,16 @@ export const ResourceManager: React.FC<ResourceManagerProps> = ({ nodeId }) => {
 								</Button>
 							</CardHeader>
 							<CardContent>
-								<CardDescription className="text-sm">
-									{resource.content}
-								</CardDescription>
+								{resource.type === "READING" ? (
+									<div 
+										className="prose max-w-none dark:prose-invert" 
+										dangerouslySetInnerHTML={{ __html: resource.content }}
+									/>
+								) : (
+									<CardDescription className="text-sm">
+										{resource.content}
+									</CardDescription>
+								)}
 							</CardContent>
 						</Card>
 					))

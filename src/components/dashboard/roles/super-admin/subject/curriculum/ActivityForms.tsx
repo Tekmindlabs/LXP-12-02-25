@@ -1,14 +1,18 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { QuizContent, AssignmentContent, DiscussionContent, ProjectContent } from "@/types/curriculum";
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+
+import { QuizContent, AssignmentContent, DiscussionContent, ProjectContent, ReadingContent } from "@/types/curriculum";
 
 interface FormProps<T> {
 	content: T;
 	onChange: (content: T) => void;
 }
 
-export const QuizForm: React.FC<FormProps<QuizContent>> = ({ content, onChange }) => {
+const QuizForm: React.FC<FormProps<QuizContent>> = ({ content, onChange }) => {
 	const addQuestion = () => {
 		onChange({
 			questions: [
@@ -42,7 +46,64 @@ export const QuizForm: React.FC<FormProps<QuizContent>> = ({ content, onChange }
 	);
 };
 
-export const AssignmentForm: React.FC<FormProps<AssignmentContent>> = ({ content, onChange }) => {
+// Single export at the end
+export {
+	QuizForm,
+	ReadingForm,
+	AssignmentForm,
+	DiscussionForm,
+	ProjectForm
+};
+
+
+const ReadingForm: React.FC<FormProps<ReadingContent>> = ({ content, onChange }) => {
+	const editor = useEditor({
+		extensions: [
+			StarterKit,
+			Placeholder.configure({
+				placeholder: 'Start writing your content...'
+			})
+		],
+		content: content.content || '',
+		onUpdate: ({ editor }) => {
+			onChange({
+				...content,
+				content: editor.getHTML()
+			});
+		}
+	});
+
+	return (
+		<div className="space-y-4">
+			<div className="min-h-[500px] w-full border rounded-lg p-4">
+				<EditorContent editor={editor} className="h-full prose max-w-none" />
+			</div>
+			<div className="grid grid-cols-2 gap-4">
+				<Input
+					type="number"
+					value={content.estimatedReadingTime || ""}
+					onChange={(e) => onChange({ 
+						...content, 
+						estimatedReadingTime: Number(e.target.value) 
+					})}
+					placeholder="Estimated reading time (minutes)"
+				/>
+				<Input
+					value={content.references?.join(", ") || ""}
+					onChange={(e) => onChange({ 
+						...content, 
+						references: e.target.value.split(",").map(r => r.trim()) 
+					})}
+					placeholder="References (comma separated)"
+				/>
+			</div>
+		</div>
+	);
+};
+
+
+const AssignmentForm: React.FC<FormProps<AssignmentContent>> = ({ content, onChange }) => {
+
 	return (
 		<div className="space-y-4">
 			<Textarea
@@ -61,7 +122,8 @@ export const AssignmentForm: React.FC<FormProps<AssignmentContent>> = ({ content
 	);
 };
 
-export const DiscussionForm: React.FC<FormProps<DiscussionContent>> = ({ content, onChange }) => {
+
+const DiscussionForm: React.FC<FormProps<DiscussionContent>> = ({ content, onChange }) => {
 	const addGuideline = () => {
 		onChange({
 			...content,
@@ -99,7 +161,8 @@ export const DiscussionForm: React.FC<FormProps<DiscussionContent>> = ({ content
 	);
 };
 
-export const ProjectForm: React.FC<FormProps<ProjectContent>> = ({ content, onChange }) => {
+
+const ProjectForm: React.FC<FormProps<ProjectContent>> = ({ content, onChange }) => {
 	const addObjective = () => {
 		onChange({
 			...content,
