@@ -10,7 +10,6 @@ import {
 	FileText, 
 	ListTodo,
 	Edit,
-	Trash2
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,8 +18,8 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-	DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+
 
 interface TreeNodeProps {
 	node: CurriculumNode;
@@ -194,19 +193,20 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
 	onNodeSelect,
 }) => {
 	const [selectedNodeId, setSelectedNodeId] = useState<string>();
-	const { data: nodes, refetch } = api.curriculum.getNodes.useQuery({ subjectId });
+	const { data: nodes, refetch } = api.curriculum.getNodes.useQuery({ 
+		subjectId 
+	}, {
+		// Ensure nodes are treated as CurriculumNode[]
+		select: (data): CurriculumNode[] => {
+			return (data || []) as CurriculumNode[];
+		}
+	});
 	const createNode = api.curriculum.createNode.useMutation({
 		onSuccess: () => refetch(),
 	});
 
-	const handleAddNode = async () => {
-		await createNode.mutateAsync({
-			title: "New Node",
-			type: "CHAPTER",
-			order: (nodes?.length || 0) + 1,
-			subjectId,
-		});
-	};
+
+
 
 	const handleNodeSelect = (node: CurriculumNode) => {
 		setSelectedNodeId(node.id);

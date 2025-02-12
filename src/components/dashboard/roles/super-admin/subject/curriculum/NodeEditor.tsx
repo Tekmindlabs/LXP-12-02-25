@@ -152,7 +152,7 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({ node }) => {
 
 				<Button 
 					onClick={handleSave} 
-					disabled={updateNode.isLoading}
+					disabled={updateNode.status === 'pending'}
 					className="w-full"
 				>
 					Save Changes
