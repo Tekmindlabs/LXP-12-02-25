@@ -1115,13 +1115,13 @@ enum ActivityConfiguration {
   PRESENTATION
 }
 
-enum CurriculumNodeType {
+enum NodeType {
   CHAPTER
   TOPIC
   SUBTOPIC
 }
 
-enum CurriculumResourceType {
+enum ResourceType {
   READING
   VIDEO
   URL
@@ -1132,7 +1132,7 @@ model CurriculumNode {
   id          String               @id @default(cuid())
   title       String
   description String?
-  type        CurriculumNodeType
+  type        NodeType
   parentId    String?
   order       Int
   subjectId   String
@@ -1149,7 +1149,7 @@ model CurriculumNode {
 model CurriculumResource {
   id          String               @id @default(cuid())
   title       String
-  type        CurriculumResourceType
+  type        ResourceType
   content     String
   nodeId      String
   node        CurriculumNode       @relation(fields: [nodeId], references: [id])
