@@ -1,45 +1,89 @@
-import { z } from "zod";
+export type NodeType = 'CHAPTER' | 'TOPIC' | 'SUBTOPIC';
+export type ResourceType = 'READING' | 'VIDEO' | 'URL' | 'DOCUMENT';
+export type ActivityType = 'QUIZ' | 'ASSIGNMENT' | 'DISCUSSION' | 'PROJECT';
 
-export const CurriculumNodeType = z.enum(["CHAPTER", "TOPIC", "SUBTOPIC"]);
-export type CurriculumNodeType = z.infer<typeof CurriculumNodeType>;
+export interface FileInfo {
+	name: string;
+	size: number;
+	type: string;
+	url?: string;
+}
 
-export const CurriculumResourceType = z.enum(["READING", "VIDEO", "URL", "DOCUMENT"]);
-export type CurriculumResourceType = z.infer<typeof CurriculumResourceType>;
+export interface QuizContent {
+	questions: {
+		question: string;
+		options?: string[];
+		correctAnswer?: string | number;
+		points?: number;
+	}[];
+}
 
-export const curriculumNodeSchema = z.object({
-	id: z.string(),
-	title: z.string(),
-	description: z.string().optional(),
-	type: CurriculumNodeType,
-	parentId: z.string().optional(),
-	order: z.number(),
-	subjectId: z.string(),
-	createdAt: z.date(),
-	updatedAt: z.date(),
-});
+export interface AssignmentContent {
+	instructions: string;
+	dueDate?: Date;
+	totalPoints?: number;
+	rubric?: {
+		criteria: string;
+		points: number;
+	}[];
+}
 
-export const curriculumResourceSchema = z.object({
-	id: z.string(),
-	title: z.string(),
-	type: CurriculumResourceType,
-	content: z.string(),
-	nodeId: z.string(),
-	fileInfo: z.record(z.any()).optional(),
-	createdAt: z.date(),
-	updatedAt: z.date(),
-});
+export interface DiscussionContent {
+	topic: string;
+	guidelines?: string[];
+	dueDate?: Date;
+	minResponses?: number;
+}
 
-export const curriculumActivitySchema = z.object({
-	id: z.string(),
-	title: z.string(),
-	type: z.string(),
-	content: z.record(z.any()),
-	isGraded: z.boolean(),
-	nodeId: z.string(),
-	createdAt: z.date(),
-	updatedAt: z.date(),
-});
+export interface ProjectContent {
+	description: string;
+	objectives?: string[];
+	dueDate?: Date;
+	deliverables?: string[];
+	rubric?: {
+		criteria: string;
+		points: number;
+	}[];
+}
 
-export type CurriculumNode = z.infer<typeof curriculumNodeSchema>;
-export type CurriculumResource = z.infer<typeof curriculumResourceSchema>;
-export type CurriculumActivity = z.infer<typeof curriculumActivitySchema>;
+export type ActivityContent = 
+	| QuizContent 
+	| AssignmentContent 
+	| DiscussionContent 
+	| ProjectContent;
+
+export interface CurriculumNode {
+	id: string;
+	title: string;
+	description?: string;
+	type: NodeType;
+	parentId?: string;
+	order: number;
+	subjectId: string;
+	resources: CurriculumResource[];
+	activities: CurriculumActivity[];
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+export interface CurriculumResource {
+	id: string;
+	title: string;
+	type: ResourceType;
+	content: string;
+	nodeId: string;
+	fileInfo?: FileInfo;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
+export interface CurriculumActivity {
+	id: string;
+	title: string;
+	type: ActivityType;
+	content: ActivityContent;
+	isGraded: boolean;
+	nodeId: string;
+	createdAt: Date;
+	updatedAt: Date;
+}

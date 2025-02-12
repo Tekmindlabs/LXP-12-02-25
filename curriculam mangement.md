@@ -68,6 +68,12 @@ model CurriculumActivity {
 
 ```typescript
 // src/components/dashboard/roles/super-admin/subject/curriculum/CurriculumManager.tsx
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CurriculumTree } from "./CurriculumTree";
+import { NodeEditor } from "./NodeEditor";
+import { ResourceManager } from "./ResourceManager";
+import { ActivityManager } from "./ActivityManager";
 
 export const CurriculumManager: React.FC<{subjectId: string}> = ({subjectId}) => {
   const [selectedNode, setSelectedNode] = useState<CurriculumNode | null>(null);
@@ -82,8 +88,8 @@ export const CurriculumManager: React.FC<{subjectId: string}> = ({subjectId}) =>
       </div>
       
       <div className="col-span-9">
-        <Tabs defaultValue="content">
-          <TabsList>
+        <Tabs defaultValue="content" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="content">Content</TabsTrigger>
             <TabsTrigger value="resources">Resources</TabsTrigger>
             <TabsTrigger value="activities">Activities</TabsTrigger>
