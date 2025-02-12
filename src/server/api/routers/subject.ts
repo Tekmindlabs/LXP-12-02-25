@@ -188,7 +188,7 @@ export const subjectRouter = createTRPCRouter({
 			});
 		}),
 
-	getSubject: protectedProcedure
+	getById: protectedProcedure
 		.input(z.string())
 		.query(async ({ ctx, input }) => {
 			return ctx.prisma.subject.findUnique({

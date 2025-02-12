@@ -1,10 +1,10 @@
-import { PrismaClient, Prisma, AssessmentSystemType } from '@prisma/client';
+import { PrismaClient, Prisma, AssessmentType } from '@prisma/client';
 import { AssessmentService } from './AssessmentService';
 import { SubjectAssessmentConfig } from '../../types/grades';
 
 interface Assessment {
 	id: string;
-	type: AssessmentSystemType;
+	type: AssessmentType;
 	markingSchemeId?: string;
 	rubricId?: string;
 	totalPoints: number;
@@ -131,14 +131,16 @@ export class SubjectGradeManager {
 
 			// Handle different assessment types
 			switch (assessment.type) {
-				case AssessmentSystemType.MARKING_SCHEME:
+				case AssessmentType.QUIZ:
+				case AssessmentType.EXAM:
 					percentage = await this.assessmentService.calculatePercentageFromMarkingScheme(
 						assessment.markingSchemeId!,
 						submission.obtainedMarks || 0,
 						assessment.totalPoints
 					);
 					break;
-				case AssessmentSystemType.RUBRIC:
+				case AssessmentType.PROJECT:
+				case AssessmentType.PRESENTATION:
 					if (submission.rubricScores) {
 						percentage = await this.assessmentService.calculatePercentageFromRubric(
 							assessment.rubricId!,

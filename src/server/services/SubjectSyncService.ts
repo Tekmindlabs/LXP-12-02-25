@@ -7,14 +7,34 @@ export class SubjectSyncService {
 		this.prisma = prisma;
 	}
 
-	async syncSubjects(classGroupId: string, subjects: string[]) {
+	async trackSubjectChanges(classGroupId: string, change: { type: 'CREATE' | 'UPDATE' | 'DELETE', subjectId: string }) {
+		return this.prisma.subjectChangeLog.create({
+			data: {
+				classGroupId,
+				changes: JSON.stringify({
+					type: change.type,
+					subjectId: change.subjectId,
+					timestamp: new Date().toISOString()
+				})
+			}
+		});
+	}
+
+	async syncClassSubjects(classGroupId: string, subjects?: string[]) {
+		// If subjects not provided, get all subjects from class group
+		if (!subjects) {
+			const classGroup = await this.prisma.classGroup.findUnique({
+				where: { id: classGroupId },
+				include: { subjects: true }
+			});
+			subjects = classGroup?.subjects.map(s => s.id) || [];
+		}
+
 		// Get current subjects
 		const currentSubjects = await this.prisma.subject.findMany({
 			where: {
 				classGroups: {
-					some: {
-						id: classGroupId
-					}
+					some: { id: classGroupId }
 				}
 			}
 		});
