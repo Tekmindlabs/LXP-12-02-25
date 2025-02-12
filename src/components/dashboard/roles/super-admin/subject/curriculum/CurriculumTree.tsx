@@ -59,8 +59,12 @@ export const CurriculumTree: React.FC<CurriculumTreeProps> = ({
 		onNodeSelect(node);
 	};
 
-	const organizeNodes = (nodes: CurriculumNode[] = []) => {
-		const topLevel = nodes.filter(node => !node.parentId);
+	const organizeNodes = (nodes: any[] = []): CurriculumNode[] => {
+		const processedNodes = nodes.map(node => ({
+			...node,
+			description: node.description || undefined // Convert null to undefined
+		}));
+		const topLevel = processedNodes.filter(node => !node.parentId);
 		return topLevel.sort((a, b) => a.order - b.order);
 	};
 

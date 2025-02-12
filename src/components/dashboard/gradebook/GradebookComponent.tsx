@@ -1,7 +1,5 @@
 'use client';
 
-'use client';
-
 import { useState, useEffect } from 'react';
 import { api } from '@/utils/api';
 import { Card } from '@/components/ui/card';
@@ -11,6 +9,8 @@ import { Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { TRPCClientError } from '@trpc/client';
+import { SubjectTermGrade } from "@/types/gradebook";
+
 
 interface GradeBookProps {
 	classId: string;
@@ -50,15 +50,16 @@ export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
 
 
 
-	const formatGrade = (grade: number, type: string) => {
+	const formatGrade = (grade: number | undefined, type: string) => {
+		const numGrade = grade ?? 0; // Handle undefined grades
 		switch (type) {
 			case 'CGPA':
-				return grade.toFixed(2);
+				return numGrade.toFixed(2);
 			case 'MARKING_SCHEME':
 			case 'RUBRIC':
-				return `${grade.toFixed(1)}%`;
+				return `${numGrade.toFixed(1)}%`;
 			default:
-				return grade.toString();
+				return numGrade.toString();
 		}
 	};
 
@@ -85,7 +86,9 @@ export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
 				</thead>
 				<tbody>
 					{gradeBook.subjectRecords.map((record) => {
-						const termGrades = record.termGrades as Record<string, SubjectTermGrade> || {};
+						const termGrades = (typeof record.termGrades === 'string' 
+							? JSON.parse(record.termGrades) 
+							: record.termGrades) as Record<string, SubjectTermGrade> || {};
 						const termGrade = termGrades[activeTerm];
 
 						if (!termGrade) return null;
@@ -98,13 +101,13 @@ export const GradebookComponent: React.FC<GradeBookProps> = ({ classId }) => {
 								{activePeriods.map((period: { id: string }) => (
 									<td key={period.id}>
 										{formatGrade(
-											termGrade.periodGrades[period.id]?.percentage || 0,
+											termGrade.periodGrades?.[period.id]?.percentage,
 											gradeBook.assessmentSystem.type
 										)}
 									</td>
 								))}
 								<td>
-									{formatGrade(termGrade.finalGrade, gradeBook.assessmentSystem.type)}
+									{formatGrade(termGrade.finalGrade ?? undefined, gradeBook.assessmentSystem.type)}
 								</td>
 								<td>
 									<span className={termGrade.isPassing ? 'text-green-500' : 'text-red-500'}>

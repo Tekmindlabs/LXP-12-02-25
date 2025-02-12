@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api } from "@/utils/api";
-import { CurriculumNode, CurriculumNodeType } from "@/types/curriculum";
+import { CurriculumNode, NodeType } from "@/types/curriculum";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,7 +20,7 @@ interface NodeEditorProps {
 export const NodeEditor: React.FC<NodeEditorProps> = ({ node }) => {
 	const [title, setTitle] = useState(node.title);
 	const [description, setDescription] = useState(node.description || "");
-	const [type, setType] = useState<CurriculumNodeType>(node.type);
+	const [type, setType] = useState<NodeType>(node.type);
 
 	const updateNode = api.curriculum.updateNode.useMutation();
 
@@ -50,7 +50,7 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({ node }) => {
 
 				<div className="space-y-2">
 					<label className="text-sm font-medium">Type</label>
-					<Select value={type} onValueChange={(value) => setType(value as CurriculumNodeType)}>
+					<Select value={type} onValueChange={(value) => setType(value as NodeType)}>
 						<SelectTrigger>
 							<SelectValue placeholder="Select node type" />
 						</SelectTrigger>
@@ -74,7 +74,7 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({ node }) => {
 
 				<Button 
 					onClick={handleSave} 
-					disabled={updateNode.isLoading}
+					disabled={updateNode.status === 'pending'}
 					className="w-full"
 				>
 					Save Changes

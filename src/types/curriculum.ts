@@ -1,6 +1,21 @@
 export type NodeType = 'CHAPTER' | 'TOPIC' | 'SUBTOPIC';
 export type ResourceType = 'READING' | 'VIDEO' | 'URL' | 'DOCUMENT';
-export type ActivityType = 'QUIZ' | 'ASSIGNMENT' | 'DISCUSSION' | 'PROJECT';
+export type ActivityType = 
+	| 'QUIZ_MULTIPLE_CHOICE'
+	| 'QUIZ_DRAG_DROP'
+	| 'QUIZ_FILL_BLANKS'
+	| 'QUIZ_MEMORY'
+	| 'QUIZ_TRUE_FALSE'
+	| 'GAME_WORD_SEARCH'
+	| 'GAME_CROSSWORD'
+	| 'GAME_FLASHCARDS'
+	| 'VIDEO_YOUTUBE'
+	| 'READING'
+	| 'CLASS_ASSIGNMENT'
+	| 'CLASS_PROJECT'
+	| 'CLASS_PRESENTATION'
+	| 'CLASS_TEST'
+	| 'CLASS_EXAM';
 
 export interface FileInfo {
 	name: string;

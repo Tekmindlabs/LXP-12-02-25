@@ -3,12 +3,10 @@ import { api } from "@/utils/api";
 import { 
 	QuizForm, 
 	AssignmentForm, 
-	DiscussionForm, 
 	ProjectForm 
 } from './ActivityForms';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
 	Select,
@@ -25,8 +23,23 @@ import {
 	CardDescription,
 } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
-import { ActivityType, ActivityContent } from "@/types/curriculum";
+import { ActivityType, ActivityContent, QuizContent, AssignmentContent, ProjectContent } from "@/types/curriculum";
 import { toast } from "@/hooks/use-toast";
+
+
+// Type guards
+const isQuizContent = (content: ActivityContent): content is QuizContent => {
+	return 'questions' in content;
+};
+
+const isAssignmentContent = (content: ActivityContent): content is AssignmentContent => {
+	return 'instructions' in content;
+};
+
+const isProjectContent = (content: ActivityContent): content is ProjectContent => {
+	return 'description' in content;
+};
+
 
 interface ActivityFormProps {
 	nodeId: string;
@@ -36,37 +49,31 @@ interface ActivityFormProps {
 
 const ActivityForm: React.FC<ActivityFormProps> = ({ nodeId, onSuccess, onCancel }) => {
 	const [title, setTitle] = useState("");
-	const [type, setType] = useState<ActivityType>("QUIZ");
+	const [type, setType] = useState<ActivityType>("QUIZ_MULTIPLE_CHOICE");
 	const [isGraded, setIsGraded] = useState(false);
 	const [content, setContent] = useState<ActivityContent>(() => {
-		switch (type) {
-			case 'QUIZ':
-				return { questions: [] };
-			case 'ASSIGNMENT':
-				return { instructions: '', totalPoints: 0 };
-			case 'DISCUSSION':
-				return { topic: '', guidelines: [] };
-			case 'PROJECT':
-				return { description: '', objectives: [] };
-			default:
-				return { questions: [] };
-		}
+		return { questions: [] };
 	});
+
 
 	useEffect(() => {
 		switch (type) {
-			case 'QUIZ':
+			case 'QUIZ_MULTIPLE_CHOICE':
+			case 'QUIZ_DRAG_DROP':
+			case 'QUIZ_FILL_BLANKS':
+			case 'QUIZ_MEMORY':
+			case 'QUIZ_TRUE_FALSE':
 				setContent({ questions: [] });
 				break;
-			case 'ASSIGNMENT':
+			case 'CLASS_ASSIGNMENT':
+			case 'CLASS_PROJECT':
 				setContent({ instructions: '', totalPoints: 0 });
 				break;
-			case 'DISCUSSION':
-				setContent({ topic: '', guidelines: [] });
-				break;
-			case 'PROJECT':
+			case 'CLASS_PRESENTATION':
 				setContent({ description: '', objectives: [] });
 				break;
+			default:
+				setContent({ questions: [] });
 		}
 	}, [type]);
 
@@ -101,31 +108,21 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ nodeId, onSuccess, onCancel
 		let isValid = true;
 		let errorMessage = '';
 
-		switch (type) {
-			case 'QUIZ':
-				if (!content.questions.length) {
-					isValid = false;
-					errorMessage = 'Add at least one question';
-				}
-				break;
-			case 'ASSIGNMENT':
-				if (!content.instructions.trim()) {
-					isValid = false;
-					errorMessage = 'Instructions are required';
-				}
-				break;
-			case 'DISCUSSION':
-				if (!content.topic.trim()) {
-					isValid = false;
-					errorMessage = 'Topic is required';
-				}
-				break;
-			case 'PROJECT':
-				if (!content.description.trim()) {
-					isValid = false;
-					errorMessage = 'Description is required';
-				}
-				break;
+		if (['QUIZ_MULTIPLE_CHOICE', 'QUIZ_DRAG_DROP', 'QUIZ_FILL_BLANKS', 'QUIZ_MEMORY', 'QUIZ_TRUE_FALSE'].includes(type)) {
+			if (isQuizContent(content) && !content.questions.length) {
+				isValid = false;
+				errorMessage = 'Add at least one question';
+			}
+		} else if (['CLASS_ASSIGNMENT', 'CLASS_PROJECT'].includes(type)) {
+			if (isAssignmentContent(content) && !content.instructions.trim()) {
+				isValid = false;
+				errorMessage = 'Instructions are required';
+			}
+		} else if (type === 'CLASS_PRESENTATION') {
+			if (isProjectContent(content) && !content.description.trim()) {
+				isValid = false;
+				errorMessage = 'Description is required';
+			}
 		}
 
 		if (!isValid) {
@@ -150,6 +147,7 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ nodeId, onSuccess, onCancel
 		}
 	};
 
+
 	return (
 		<Card>
 			<CardContent className="space-y-4 pt-4">
@@ -163,25 +161,40 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ nodeId, onSuccess, onCancel
 					<SelectValue placeholder="Select activity type" />
 				  </SelectTrigger>
 				  <SelectContent>
-					<SelectItem value="QUIZ">Quiz</SelectItem>
-					<SelectItem value="ASSIGNMENT">Assignment</SelectItem>
-					<SelectItem value="DISCUSSION">Discussion</SelectItem>
-					<SelectItem value="PROJECT">Project</SelectItem>
+					<SelectItem value="QUIZ_MULTIPLE_CHOICE">Multiple Choice Quiz</SelectItem>
+					<SelectItem value="QUIZ_DRAG_DROP">Drag & Drop Quiz</SelectItem>
+					<SelectItem value="QUIZ_FILL_BLANKS">Fill in the Blanks</SelectItem>
+					<SelectItem value="QUIZ_MEMORY">Memory Quiz</SelectItem>
+					<SelectItem value="QUIZ_TRUE_FALSE">True/False Quiz</SelectItem>
+					<SelectItem value="CLASS_ASSIGNMENT">Assignment</SelectItem>
+					<SelectItem value="CLASS_PROJECT">Project</SelectItem>
+					<SelectItem value="CLASS_PRESENTATION">Presentation</SelectItem>
 				  </SelectContent>
 				</Select>
 				{/* Render different content forms based on activity type */}
-				{type === 'QUIZ' && (
-				  <QuizForm content={content} onChange={setContent} />
+				{(type === 'QUIZ_MULTIPLE_CHOICE' || 
+				  type === 'QUIZ_DRAG_DROP' || 
+				  type === 'QUIZ_FILL_BLANKS' || 
+				  type === 'QUIZ_MEMORY' || 
+				  type === 'QUIZ_TRUE_FALSE') && (
+				  <QuizForm 
+					content={content as QuizContent} 
+					onChange={(newContent) => setContent(newContent)} 
+				  />
 				)}
-				{type === 'ASSIGNMENT' && (
-				  <AssignmentForm content={content} onChange={setContent} />
+				{(type === 'CLASS_ASSIGNMENT' || type === 'CLASS_PROJECT') && (
+				  <AssignmentForm 
+					content={content as AssignmentContent} 
+					onChange={(newContent) => setContent(newContent)} 
+				  />
 				)}
-				{type === 'DISCUSSION' && (
-				  <DiscussionForm content={content} onChange={setContent} />
+				{type === 'CLASS_PRESENTATION' && (
+				  <ProjectForm 
+					content={content as ProjectContent} 
+					onChange={(newContent) => setContent(newContent)} 
+				  />
 				)}
-				{type === 'PROJECT' && (
-				  <ProjectForm content={content} onChange={setContent} />
-				)}
+
 				<div className="flex items-center space-x-2">
 					<Switch
 						checked={isGraded}
@@ -191,7 +204,7 @@ const ActivityForm: React.FC<ActivityFormProps> = ({ nodeId, onSuccess, onCancel
 				</div>
 				<div className="flex justify-end space-x-2">
 					<Button variant="outline" onClick={onCancel}>Cancel</Button>
-					<Button onClick={handleSubmit} disabled={createActivity.isLoading}>
+					<Button onClick={handleSubmit} disabled={createActivity.status === 'pending'}>
 						Add Activity
 					</Button>
 				</div>
@@ -275,7 +288,7 @@ export const ActivityManager: React.FC<ActivityManagerProps> = ({ nodeId }) => {
 						variant="ghost"
 						size="sm"
 						onClick={() => handleDelete(activity.id)}
-						disabled={deleteActivity.isLoading}
+						disabled={deleteActivity.status === 'pending'}
 					  >
 						<Trash2 className="h-4 w-4" />
 					  </Button>

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
-import { CurriculumNodeType, CurriculumResourceType } from "@/types/curriculum";
+import { ActivityType } from "@prisma/client";
+import { NodeType, ResourceType } from "@/types/curriculum";
 
 export const curriculumRouter = createTRPCRouter({
 	// Node operations
@@ -23,7 +24,7 @@ export const curriculumRouter = createTRPCRouter({
 		.input(z.object({
 			title: z.string(),
 			description: z.string().optional(),
-			type: z.enum(["CHAPTER", "TOPIC", "SUBTOPIC"]),
+			type: z.enum(["CHAPTER", "TOPIC", "SUBTOPIC"] as const),
 			parentId: z.string().optional(),
 			order: z.number(),
 			subjectId: z.string()
@@ -71,7 +72,7 @@ export const curriculumRouter = createTRPCRouter({
 	createResource: protectedProcedure
 		.input(z.object({
 			title: z.string(),
-			type: z.enum(["READING", "VIDEO", "URL", "DOCUMENT"]),
+			type: z.enum(["READING", "VIDEO", "URL", "DOCUMENT"] as const),
 			content: z.string(),
 			nodeId: z.string(),
 			fileInfo: z.record(z.any()).optional()
@@ -86,7 +87,7 @@ export const curriculumRouter = createTRPCRouter({
 		.input(z.object({
 			id: z.string(),
 			title: z.string().optional(),
-			type: z.enum(["READING", "VIDEO", "URL", "DOCUMENT"]).optional(),
+			type: z.enum(["READING", "VIDEO", "URL", "DOCUMENT"] as const).optional(),
 			content: z.string().optional(),
 			fileInfo: z.record(z.any()).optional()
 		}))
@@ -107,17 +108,34 @@ export const curriculumRouter = createTRPCRouter({
 		}),
 
 	// Activity operations
+	getActivities: protectedProcedure
+		.input(z.object({
+			nodeId: z.string()
+		}))
+		.query(async ({ ctx, input }) => {
+			return ctx.prisma.curriculumActivity.findMany({
+				where: { nodeId: input.nodeId },
+				orderBy: { createdAt: 'desc' }
+			});
+		}),
+
 	createActivity: protectedProcedure
 		.input(z.object({
 			title: z.string(),
-			type: z.string(),
+			type: z.nativeEnum(ActivityType),
 			content: z.record(z.any()),
 			isGraded: z.boolean(),
 			nodeId: z.string()
 		}))
 		.mutation(async ({ ctx, input }) => {
 			return ctx.prisma.curriculumActivity.create({
-				data: input
+				data: {
+					title: input.title,
+					type: input.type,
+					content: input.content,
+					isGraded: input.isGraded,
+					nodeId: input.nodeId
+				}
 			});
 		}),
 
@@ -125,7 +143,7 @@ export const curriculumRouter = createTRPCRouter({
 		.input(z.object({
 			id: z.string(),
 			title: z.string().optional(),
-			type: z.string().optional(),
+			type: z.nativeEnum(ActivityType).optional(),
 			content: z.record(z.any()).optional(),
 			isGraded: z.boolean().optional()
 		}))

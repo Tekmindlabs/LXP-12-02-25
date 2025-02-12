@@ -42,12 +42,28 @@ export class SubjectGradeManager {
 	}
 
 	private async getSubmissionsForPeriod(
-		_subjectId: string,
-		_periodId: string,
-		_studentId: string
+		subjectId: string,
+		periodId: string,
+		studentId: string
 	): Promise<Submission[]> {
-		// Implementation
-		return [];
+		const activities = await this.db.classActivity.findMany({
+			where: {
+				subjectId,
+				configuration: {
+					path: ['assessmentPeriodId'],
+					equals: periodId
+				}
+			},
+			include: {
+				submissions: {
+					where: {
+						studentId
+					}
+				}
+			}
+		});
+
+		return activities.flatMap(activity => activity.submissions);
 	}
 
 	private getAssessmentWeight(
@@ -81,8 +97,29 @@ export class SubjectGradeManager {
 		config: SubjectAssessmentConfig
 	): Promise<AssessmentPeriodGrade> {
 		const period = await this.db.termAssessmentPeriod.findUnique({
-			where: { id: periodId }
+			where: { id: periodId },
+			include: {
+				term: {
+					include: {
+						academicTerms: {
+							include: {
+								termStructure: {
+									include: {
+										program: {
+											include: {
+												assessmentSystem: true
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 		});
+
+		if (!period) throw new Error('Assessment period not found');
 
 		const submissions = await this.getSubmissionsForPeriod(subjectId, periodId, studentId);
 		let totalWeightedScore = 0;
@@ -93,7 +130,28 @@ export class SubjectGradeManager {
 			if (!assessment) continue;
 
 			const weight = this.getAssessmentWeight(assessment.type, config.weightageDistribution);
-			const percentage = await this.calculateSubmissionPercentage(submission, assessment);
+			let percentage = 0;
+
+			// Handle different assessment types
+			switch (assessment.type) {
+				case 'MARKING_SCHEME':
+					percentage = await this.assessmentService.calculatePercentageFromMarkingScheme(
+						assessment.markingSchemeId!,
+						submission.obtainedMarks || 0,
+						assessment.totalPoints
+					);
+					break;
+				case 'RUBRIC':
+					if (submission.rubricScores) {
+						percentage = await this.assessmentService.calculatePercentageFromRubric(
+							assessment.rubricId!,
+							submission.rubricScores as any
+						);
+					}
+					break;
+				default:
+					percentage = ((submission.obtainedMarks || 0) / assessment.totalPoints) * 100;
+			}
 			
 			totalWeightedScore += percentage * weight;
 			totalWeight += weight;
@@ -108,7 +166,7 @@ export class SubjectGradeManager {
 			obtainedMarks: totalWeightedScore,
 			totalMarks: totalWeight * 100,
 			percentage: finalPercentage,
-			weight: period?.weight || 0,
+			weight: period.weight || 0,
 			isPassing,
 			gradePoints
 		};
@@ -201,7 +259,7 @@ export class SubjectGradeManager {
 			})
 		]);
 		
-		const existingTermGrades = existingRecord?.termGrades as Record<string, SubjectTermGrade> || {};
+		const existingTermGrades = (existingRecord?.termGrades as unknown as Record<string, SubjectTermGrade>) || {};
 		const updatedTermGrades = {
 			...existingTermGrades,
 			[termId]: termGrade
@@ -212,12 +270,12 @@ export class SubjectGradeManager {
 				id: existingRecord?.id ?? '',
 			},
 			update: {
-				termGrades: updatedTermGrades
+				termGrades: JSON.stringify(updatedTermGrades)
 			},
 			create: {
 				gradeBookId,
 				subjectId,
-				termGrades: { [termId]: termGrade },
+				termGrades: JSON.stringify({ [termId]: termGrade }),
 				assessmentPeriodGrades: Prisma.JsonNull
 			}
 		});
