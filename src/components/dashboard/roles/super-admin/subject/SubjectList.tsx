@@ -1,3 +1,4 @@
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ interface SubjectListProps {
 }
 
 export const SubjectList = ({ subjects, onSelect }: SubjectListProps) => {
+	const router = useRouter();
 	const utils = api.useContext();
 	const deleteMutation = api.subject.deleteSubject.useMutation({
 		onSuccess: () => {
@@ -31,10 +33,18 @@ export const SubjectList = ({ subjects, onSelect }: SubjectListProps) => {
 		},
 	});
 
+	const handleViewSubject = (id: string) => {
+		router.push(`/dashboard/super-admin/subject/${id}`);
+	};
+
 	return (
 		<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 			{subjects.map((subject) => (
-				<Card key={subject.id}>
+				<Card 
+					key={subject.id} 
+					className="cursor-pointer hover:bg-accent/5"
+					onClick={() => handleViewSubject(subject.id)}
+				>
 					<CardContent className="p-4">
 						<div className="space-y-2">
 							<div className="flex items-center justify-between">
@@ -67,13 +77,13 @@ export const SubjectList = ({ subjects, onSelect }: SubjectListProps) => {
 
 							<p className="text-sm">Status: {subject.status}</p>
 
-							<div className="flex space-x-2 pt-2">
+							<div className="flex space-x-2 pt-2" onClick={(e) => e.stopPropagation()}>
 								<Button
 									variant="outline"
 									size="sm"
 									onClick={() => onSelect(subject.id)}
 								>
-									Edit
+									Quick Edit
 								</Button>
 								<Button
 									variant="destructive"
