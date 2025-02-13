@@ -31,33 +31,53 @@ interface ResourceFormProps {
 	nodeId: string;
 	onSuccess: () => void;
 	onCancel: () => void;
+	refetch: () => Promise<void>;
 }
 
-const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel }) => {
+const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel, refetch }) => {
 	const [title, setTitle] = useState("");
 	const [type, setType] = useState<CurriculumResourceType>("READING");
 	const [content, setContent] = useState("");
 
-
-
-
 	const createResource = api.curriculum.createResource.useMutation({
-		onSuccess: () => {
+		onSuccess: async (data) => {
+			console.log('Resource created successfully:', data);
+			await refetch();
 			onSuccess();
 			setTitle("");
 			setType("READING");
 			setContent("");
-
 		},
+		onError: (error) => {
+			console.error("Failed to create resource:", error);
+			// You might want to add error UI here
+		}
 	});
 
-	const handleSubmit = async () => {
-		await createResource.mutateAsync({
-			title,
-			type,
-			content,
-			nodeId,
-		});
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!title.trim() || !content.trim()) {
+			console.error("Title and content are required");
+			return;
+		}
+
+		try {
+			console.log('Creating resource with data:', {
+				title: title.trim(),
+				type,
+				content: content.trim(),
+				nodeId,
+			});
+			
+			await createResource.mutateAsync({
+				title: title.trim(),
+				type,
+				content: content.trim(),
+				nodeId,
+			});
+		} catch (error) {
+			console.error("Error creating resource:", error);
+		}
 	};
 
 	const renderContentInput = () => {
@@ -163,11 +183,25 @@ interface ResourceManagerProps {
 
 export const ResourceManager: React.FC<ResourceManagerProps> = ({ nodeId }) => {
 	const [showForm, setShowForm] = useState(false);
-	const { data: resources, refetch } = api.curriculum.getNodes.useQuery({ 
+	const { data: nodes, refetch } = api.curriculum.getNodes.useQuery({ 
 		subjectId: nodeId 
+	}, {
+		refetchOnWindowFocus: false,
+		onError: (error) => {
+			console.error("Error fetching nodes:", error);
+		},
+		onSuccess: (data) => {
+			console.log('Fetched nodes:', data);
+		}
 	});
 	const deleteResource = api.curriculum.deleteResource.useMutation({
-		onSuccess: () => refetch(),
+		onSuccess: () => {
+			console.log('Resource deleted successfully');
+			void refetch();
+		},
+		onError: (error) => {
+			console.error("Error deleting resource:", error);
+		}
 	});
 
 	const handleDelete = async (id: string) => {
@@ -188,16 +222,16 @@ export const ResourceManager: React.FC<ResourceManagerProps> = ({ nodeId }) => {
 				{showForm && (
 					<ResourceForm
 						nodeId={nodeId}
+						refetch={refetch}
 						onSuccess={() => {
 							setShowForm(false);
-							refetch();
 						}}
 						onCancel={() => setShowForm(false)}
 					/>
 				)}
 
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-					{resources?.map((node: ResourceNode) =>
+					{nodes?.map((node: ResourceNode) =>
 						node.resources.map((resource) => (
 							<Card key={resource.id}>
 								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -218,7 +252,7 @@ export const ResourceManager: React.FC<ResourceManagerProps> = ({ nodeId }) => {
 								<CardContent>
 									{resource.type === "READING" ? (
 										<div 
-											className="prose max-w-none dark:prose-invert" 
+											className="prose prose-lg max-w-none dark:prose-invert focus:outline-none" 
 											dangerouslySetInnerHTML={{ __html: resource.content }}
 										/>
 									) : (

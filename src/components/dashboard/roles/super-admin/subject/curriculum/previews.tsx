@@ -27,7 +27,10 @@ export const ReadingPreview: React.FC<{content: ReadingContent}> = ({content}) =
 	<Card>
 		<CardContent className="p-4">
 			<div className="space-y-4">
-				<div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: content.content }} />
+				<div 
+					className="prose prose-lg max-w-none dark:prose-invert focus:outline-none" 
+					dangerouslySetInnerHTML={{ __html: content.content }} 
+				/>
 				<div className="flex items-center gap-4 text-sm text-muted-foreground mt-4 pt-4 border-t">
 					<div className="flex items-center gap-1">
 						<Clock className="h-4 w-4" />
@@ -90,7 +93,7 @@ export const QuizPreview: React.FC<{content: QuizContent}> = ({content}) => (
 export const AssignmentPreview: React.FC<{content: AssignmentContent}> = ({content}) => (
 	<Card>
 		<CardContent className="p-4">
-			<div className="prose max-w-none">
+			<div className="prose prose-lg max-w-none dark:prose-invert focus:outline-none">
 				<h3>Instructions</h3>
 				<div dangerouslySetInnerHTML={{ __html: content.instructions }} />
 			</div>
