@@ -1,9 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Placeholder from '@tiptap/extension-placeholder';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+
 
 import { QuizContent, AssignmentContent, DiscussionContent, ProjectContent, ReadingContent } from "@/types/curriculum";
 
@@ -57,27 +56,21 @@ export {
 
 
 const ReadingForm: React.FC<FormProps<ReadingContent>> = ({ content, onChange }) => {
-	const editor = useEditor({
-		extensions: [
-			StarterKit,
-			Placeholder.configure({
-				placeholder: 'Start writing your content...'
-			})
-		],
-		content: content.content || '',
-		onUpdate: ({ editor }) => {
-			onChange({
-				...content,
-				content: editor.getHTML()
-			});
-		}
-	});
-
 	return (
 		<div className="space-y-4">
-			<div className="min-h-[500px] w-full border rounded-lg p-4">
-				<EditorContent editor={editor} className="h-full prose max-w-none" />
+			<div className="min-h-[500px] w-full border rounded-lg">
+				<RichTextEditor
+					value={content.content || ''}
+					onChange={(newContent) => onChange({
+						...content,
+						content: newContent
+					})}
+					placeholder="Start writing your reading content..."
+					minHeight="500px"
+					className="p-4"
+				/>
 			</div>
+
 			<div className="grid grid-cols-2 gap-4">
 				<Input
 					type="number"
