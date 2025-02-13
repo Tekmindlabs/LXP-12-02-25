@@ -3,7 +3,7 @@ import { api } from "@/utils/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { NovelEditor } from "@/components/ui/novel-editor";
+import { NovelEditor } from "@/components/editor/novel-editor";
 import type { CurriculumResourceType } from ".prisma/client";
 
 
@@ -86,10 +86,10 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 				return (
 					<div className="relative min-h-[300px] w-full">
 						<NovelEditor
-							value={content}
-							onChange={setContent}
-							placeholder="Start writing your content..."
-							className="min-h-[300px]"
+							defaultValue={content}
+							onUpdate={(editor) => {
+								setContent(editor?.getHTML() || '');
+							}}
 						/>
 					</div>
 				);

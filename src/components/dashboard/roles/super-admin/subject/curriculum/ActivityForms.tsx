@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { NovelEditor } from '@/components/ui/novel-editor';
+import { NovelEditor } from '@/components/editor/novel-editor';
 
 
 
@@ -14,23 +14,25 @@ interface FormProps<T> {
 
 const QuizForm: React.FC<FormProps<QuizContent>> = ({ content, onChange }) => {
 	const addQuestion = () => {
+		const newQuestions = [...(content.questions || [])];
 		onChange({
+			...content,
 			questions: [
-				...content.questions,
+				...newQuestions,
 				{ question: "", options: [], correctAnswer: "" }
 			]
 		});
 	};
 
 	const updateQuestion = (index: number, question: string) => {
-		const newQuestions = [...content.questions];
+		const newQuestions = [...(content.questions || [])];
 		newQuestions[index] = { ...newQuestions[index], question };
-		onChange({ questions: newQuestions });
+		onChange({ ...content, questions: newQuestions });
 	};
 
 	return (
 		<div className="space-y-4">
-			{content.questions.map((q, i) => (
+			{(content.questions || []).map((q, i) => (
 				<div key={i} className="space-y-2">
 					<Input
 						value={q.question}
@@ -61,16 +63,16 @@ const ReadingForm: React.FC<FormProps<ReadingContent>> = ({ content, onChange })
 		<div className="space-y-4">
 			<div className="min-h-[500px] w-full">
 				<NovelEditor
-					value={content.content || ''}
-					onChange={(newContent) => onChange({
-						...content,
-						content: newContent
-					})}
-					placeholder="Start writing your reading content..."
-					className="min-h-[500px]"
+					defaultValue={content.content || ''}
+					onUpdate={(editor) => {
+						onChange({
+							...content,
+							content: editor?.getHTML() || ''
+						});
+					}}
 				/>
-			</div>
 
+			</div>
 
 			<div className="grid grid-cols-2 gap-4">
 				<Input
