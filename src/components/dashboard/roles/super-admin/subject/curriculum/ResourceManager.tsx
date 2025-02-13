@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import dynamic from 'next/dynamic';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
 import type { CurriculumResourceType } from ".prisma/client";
 
 // TipTap extensions
@@ -31,7 +31,7 @@ import {
 	CardTitle,
 	CardDescription,
 } from "@/components/ui/card";
-import { Plus, FileText, Video, Link, File, Trash2 } from "lucide-react";
+import { Plus, FileText, Video, Link, File, Trash2, Bold, Italic, Underline as UnderlineIcon, Link as LinkIcon } from "lucide-react";
 
 const Editor = dynamic(
 	() => Promise.resolve(EditorContent),
@@ -61,7 +61,9 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 				placeholder: 'Start writing your content...'
 			}),
 			Image,
-			TiptapLink,
+			TiptapLink.configure({
+                openOnClick: false,
+            }),
 			TaskList,
 			TaskItem,
 			Underline,
@@ -103,8 +105,49 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 			case "READING":
 				return (
 					<div className="min-h-[300px] w-full border rounded-lg overflow-hidden p-4 prose prose-sm max-w-none">
-						<EditorContent editor={editor} />
-					</div>
+                        {editor && (
+                            <BubbleMenu className="flex items-center gap-1 rounded-md border bg-white p-1 shadow-md" editor={editor}>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => editor.chain().focus().toggleBold().run()}
+                                    className={editor.isActive('bold') ? 'bg-muted' : ''}
+                                >
+                                    <Bold className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => editor.chain().focus().toggleItalic().run()}
+                                    className={editor.isActive('italic') ? 'bg-muted' : ''}
+                                >
+                                    <Italic className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => editor.chain().focus().toggleUnderline().run()}
+                                    className={editor.isActive('underline') ? 'bg-muted' : ''}
+                                >
+                                    <UnderlineIcon className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        const url = window.prompt('Enter URL');
+                                        if (url) {
+                                            editor.chain().focus().setLink({ href: url }).run();
+                                        }
+                                    }}
+                                    className={editor.isActive('link') ? 'bg-muted' : ''}
+                                >
+                                    <LinkIcon className="h-4 w-4" />
+                                </Button>
+                            </BubbleMenu>
+                        )}
+                        <EditorContent editor={editor} />
+                    </div>
 
 				);
 
