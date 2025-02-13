@@ -3,7 +3,7 @@ import { api } from "@/utils/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { NovelEditor } from "@/components/ui/novel-editor";
 import type { CurriculumResourceType } from ".prisma/client";
 
 
@@ -64,18 +64,16 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 		switch (type) {
 			case "READING":
 				return (
-					<div className="relative min-h-[300px] w-full border rounded-lg">
-						<RichTextEditor
+					<div className="relative min-h-[300px] w-full">
+						<NovelEditor
 							value={content}
 							onChange={setContent}
 							placeholder="Start writing your content..."
-							minHeight="300px"
-							className="p-4"
+							className="min-h-[300px]"
 						/>
 					</div>
-
-
 				);
+
 
 			case "VIDEO":
 			case "URL":

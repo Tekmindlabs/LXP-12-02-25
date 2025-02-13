@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { NovelEditor } from '@/components/ui/novel-editor';
+
 
 
 import { QuizContent, AssignmentContent, DiscussionContent, ProjectContent, ReadingContent } from "@/types/curriculum";
@@ -58,18 +59,18 @@ export {
 const ReadingForm: React.FC<FormProps<ReadingContent>> = ({ content, onChange }) => {
 	return (
 		<div className="space-y-4">
-			<div className="min-h-[500px] w-full border rounded-lg">
-				<RichTextEditor
+			<div className="min-h-[500px] w-full">
+				<NovelEditor
 					value={content.content || ''}
 					onChange={(newContent) => onChange({
 						...content,
 						content: newContent
 					})}
 					placeholder="Start writing your reading content..."
-					minHeight="500px"
-					className="p-4"
+					className="min-h-[500px]"
 				/>
 			</div>
+
 
 			<div className="grid grid-cols-2 gap-4">
 				<Input
