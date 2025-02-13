@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+
 import {
 	Select,
 	SelectContent,
@@ -41,11 +42,13 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 				placeholder: 'Start writing your content...'
 			})
 		],
-		content: '',
+		content: content,
 		onUpdate: ({ editor }) => {
 			setContent(editor.getHTML());
 		}
 	});
+
+
 
 	const createResource = api.curriculum.createResource.useMutation({
 		onSuccess: () => {
@@ -53,7 +56,7 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 			setTitle("");
 			setType("READING");
 			setContent("");
-			editor?.commands.setContent('');
+
 		},
 	});
 
@@ -73,6 +76,7 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 					<div className="min-h-[300px] w-full border rounded-lg p-4">
 						<EditorContent editor={editor} className="h-full prose max-w-none" />
 					</div>
+
 				);
 			case "VIDEO":
 			case "URL":
