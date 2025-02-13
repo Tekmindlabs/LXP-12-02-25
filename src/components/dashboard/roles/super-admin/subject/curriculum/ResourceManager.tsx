@@ -1,21 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { api } from "@/utils/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import dynamic from 'next/dynamic';
-import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import type { CurriculumResourceType } from ".prisma/client";
 
-// TipTap extensions
-import StarterKit from '@tiptap/starter-kit';
-import Placeholder from '@tiptap/extension-placeholder';
-import Image from '@tiptap/extension-image';
-import TiptapLink from '@tiptap/extension-link';
-import TaskList from '@tiptap/extension-task-list';
-import TaskItem from '@tiptap/extension-task-item';
-import Underline from '@tiptap/extension-underline';
-import TextStyle from '@tiptap/extension-text-style';
 
 import {
 	Select,
@@ -33,13 +23,7 @@ import {
 } from "@/components/ui/card";
 import { Plus, FileText, Video, Link, File, Trash2, Bold, Italic, Underline as UnderlineIcon, Link as LinkIcon } from "lucide-react";
 
-const Editor = dynamic(
-	() => Promise.resolve(EditorContent),
-	{
-		ssr: false,
-		loading: () => <div className="min-h-[300px] w-full border rounded-lg p-4">Loading editor...</div>
-	}
-);
+
 
 
 
@@ -54,31 +38,7 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 	const [type, setType] = useState<CurriculumResourceType>("READING");
 	const [content, setContent] = useState("");
 
-	const editor = useEditor({
-		extensions: [
-			StarterKit,
-			Placeholder.configure({
-				placeholder: 'Start writing your content...'
-			}),
-			Image,
-			TiptapLink.configure({
-                openOnClick: false,
-            }),
-			TaskList,
-			TaskItem,
-			Underline,
-			TextStyle
-		],
-		onUpdate: ({ editor }) => {
-			setContent(editor.getHTML());
-		}
-	});
 
-	useEffect(() => {
-		if (editor && content !== editor.getHTML()) {
-			editor.commands.setContent(content);
-		}
-	}, [content, editor]);
 
 
 	const createResource = api.curriculum.createResource.useMutation({
@@ -104,50 +64,16 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 		switch (type) {
 			case "READING":
 				return (
-					<div className="min-h-[300px] w-full border rounded-lg overflow-hidden p-4 prose prose-sm max-w-none">
-                        {editor && (
-                            <BubbleMenu className="flex items-center gap-1 rounded-md border bg-white p-1 shadow-md" editor={editor}>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => editor.chain().focus().toggleBold().run()}
-                                    className={editor.isActive('bold') ? 'bg-muted' : ''}
-                                >
-                                    <Bold className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => editor.chain().focus().toggleItalic().run()}
-                                    className={editor.isActive('italic') ? 'bg-muted' : ''}
-                                >
-                                    <Italic className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => editor.chain().focus().toggleUnderline().run()}
-                                    className={editor.isActive('underline') ? 'bg-muted' : ''}
-                                >
-                                    <UnderlineIcon className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                        const url = window.prompt('Enter URL');
-                                        if (url) {
-                                            editor.chain().focus().setLink({ href: url }).run();
-                                        }
-                                    }}
-                                    className={editor.isActive('link') ? 'bg-muted' : ''}
-                                >
-                                    <LinkIcon className="h-4 w-4" />
-                                </Button>
-                            </BubbleMenu>
-                        )}
-                        <EditorContent editor={editor} />
-                    </div>
+					<div className="relative min-h-[300px] w-full border rounded-lg">
+						<RichTextEditor
+							value={content}
+							onChange={setContent}
+							placeholder="Start writing your content..."
+							minHeight="300px"
+							className="p-4"
+						/>
+					</div>
+
 
 				);
 
@@ -175,7 +101,7 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 	};
 
 	return (
-		<Card>
+		<Card className="relative">
 			<CardContent className="space-y-4 pt-4">
 				<Input
 					value={title}
@@ -251,8 +177,8 @@ export const ResourceManager: React.FC<ResourceManagerProps> = ({ nodeId }) => {
 	};
 
 	return (
-		<div className="space-y-4">
-			<div className="flex justify-between items-center">
+		<div className="space-y-4 h-full flex flex-col">
+			<div className="flex justify-between items-center sticky top-0 bg-background py-2">
 				<h3 className="text-lg font-medium">Learning Resources</h3>
 				<Button onClick={() => setShowForm(true)} disabled={showForm}>
 					<Plus className="h-4 w-4 mr-2" />
@@ -260,51 +186,53 @@ export const ResourceManager: React.FC<ResourceManagerProps> = ({ nodeId }) => {
 				</Button>
 			</div>
 
-			{showForm && (
-				<ResourceForm
-					nodeId={nodeId}
-					onSuccess={() => {
-						setShowForm(false);
-						refetch();
-					}}
-					onCancel={() => setShowForm(false)}
-				/>
-			)}
-
-			<div className="grid grid-cols-2 gap-4">
-				{resources?.map((node: ResourceNode) =>
-					node.resources.map((resource) => (
-						<Card key={resource.id}>
-							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<div className="flex items-center space-x-2">
-									<ResourceIcon type={resource.type} />
-									<CardTitle className="text-sm font-medium">
-										{resource.title}
-									</CardTitle>
-								</div>
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={() => handleDelete(resource.id)}
-								>
-									<Trash2 className="h-4 w-4" />
-								</Button>
-							</CardHeader>
-							<CardContent>
-								{resource.type === "READING" ? (
-									<div 
-										className="prose max-w-none dark:prose-invert" 
-										dangerouslySetInnerHTML={{ __html: resource.content }}
-									/>
-								) : (
-									<CardDescription className="text-sm">
-										{resource.content}
-									</CardDescription>
-								)}
-							</CardContent>
-						</Card>
-					))
+			<div className="flex-1 overflow-y-auto">
+				{showForm && (
+					<ResourceForm
+						nodeId={nodeId}
+						onSuccess={() => {
+							setShowForm(false);
+							refetch();
+						}}
+						onCancel={() => setShowForm(false)}
+					/>
 				)}
+
+				<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+					{resources?.map((node: ResourceNode) =>
+						node.resources.map((resource) => (
+							<Card key={resource.id}>
+								<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+									<div className="flex items-center space-x-2">
+										<ResourceIcon type={resource.type} />
+										<CardTitle className="text-sm font-medium">
+											{resource.title}
+										</CardTitle>
+									</div>
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => handleDelete(resource.id)}
+									>
+										<Trash2 className="h-4 w-4" />
+									</Button>
+								</CardHeader>
+								<CardContent>
+									{resource.type === "READING" ? (
+										<div 
+											className="prose max-w-none dark:prose-invert" 
+											dangerouslySetInnerHTML={{ __html: resource.content }}
+										/>
+									) : (
+										<CardDescription className="text-sm">
+											{resource.content}
+										</CardDescription>
+									)}
+								</CardContent>
+							</Card>
+						))
+					)}
+				</div>
 			</div>
 		</div>
 	);

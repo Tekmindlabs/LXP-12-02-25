@@ -12,10 +12,7 @@ import Color from '@tiptap/extension-color';
 import FontFamily from '@tiptap/extension-font-family';
 import FontSize from '@tiptap/extension-font-size';
 import Highlight from '@tiptap/extension-highlight';
-import BulletList from '@tiptap/extension-bullet-list';
-import OrderedList from '@tiptap/extension-ordered-list';
-import CodeBlock from '@tiptap/extension-code-block';
-import Blockquote from '@tiptap/extension-blockquote';
+
 import { Button } from './button';
 import {
 	Bold,
@@ -55,13 +52,24 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
 	const editor = useEditor({
 		extensions: [
-			StarterKit,
+			StarterKit.configure({
+				bulletList: {},
+				orderedList: {},
+				codeBlock: {},
+				blockquote: {},
+				heading: {
+					levels: [1, 2]
+				}
+			}),
 			Placeholder.configure({
 				placeholder
 			}),
 			Image,
 			Link.configure({
 				openOnClick: false,
+				HTMLAttributes: {
+					class: 'text-primary underline decoration-primary'
+				}
 			}),
 			TaskList,
 			TaskItem,
@@ -76,14 +84,38 @@ export function RichTextEditor({
 			Highlight.configure({
 				multicolor: true,
 			}),
-			BulletList,
-			OrderedList,
-			CodeBlock,
-			Blockquote,
 		],
 		content: value,
 		onUpdate: ({ editor }) => {
 			onChange(editor.getHTML());
+		},
+		editorProps: {
+			attributes: {
+				class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-xl focus:outline-none prose-headings:font-bold prose-p:my-2 prose-a:text-primary',
+			},
+			handlePaste: (view, event) => {
+				if (event.clipboardData?.files?.length) {
+					// Prevent default paste behavior for files
+					event.preventDefault();
+					return true;
+				}
+				return false;
+			},
+			handleDrop: (view, event) => {
+				if (event.dataTransfer?.files?.length) {
+					event.preventDefault();
+					return true;
+				}
+				return false;
+			},
+			handleKeyDown: (view, event) => {
+				// Handle keyboard shortcuts
+				if (event.key === 'Tab') {
+					event.preventDefault();
+					return true;
+				}
+				return false;
+			}
 		}
 	});
 
@@ -92,12 +124,12 @@ export function RichTextEditor({
 	}
 
 	return (
-		<div className="relative">
+		<div className="relative isolate">
 			{showBubbleMenu && (
 				<BubbleMenu 
 					editor={editor} 
-					className="flex items-center gap-1 rounded-md border bg-white p-1 shadow-md flex-wrap"
-					tippyOptions={{ duration: 100 }}
+					className="flex items-center gap-1 rounded-md border bg-white p-1 shadow-md flex-wrap z-[100]"
+					tippyOptions={{ duration: 100, zIndex: 100 }}
 				>
 					<Button
 						variant="ghost"
