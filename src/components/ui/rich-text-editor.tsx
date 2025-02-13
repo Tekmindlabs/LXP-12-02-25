@@ -14,6 +14,8 @@ import FontSize from '@tiptap/extension-font-size';
 import Highlight from '@tiptap/extension-highlight';
 
 import { Button } from './button';
+import { Popover, PopoverContent, PopoverTrigger } from './popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from './tooltip';
 import {
 	Bold,
 	Italic,
@@ -253,33 +255,105 @@ export function RichTextEditor({
 						<Heading2 className="h-4 w-4" />
 					</Button>
 
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => {
-							const color = window.prompt('Enter color (hex, rgb, or name)');
-							if (color) {
-								editor.chain().focus().setColor(color).run();
-							}
-						}}
-						className={editor.isActive('textStyle') ? 'bg-muted' : ''}
-					>
-						<Palette className="h-4 w-4" />
-					</Button>
+					<Popover>
+						<PopoverTrigger asChild>
+							<Button
+								variant="ghost"
+								size="sm"
+								className={editor.isActive('textStyle') ? 'bg-muted' : ''}
+							>
+								<Palette className="h-4 w-4" />
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent className="w-auto p-3">
+							<div className="space-y-2">
+								<div className="text-sm font-medium">Text Color</div>
+								<div className="flex flex-col gap-2">
+									<input 
+										type="color"
+										defaultValue="#000000"
+										onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
+										className="w-32 h-8 cursor-pointer"
+									/>
+									<div className="flex gap-1">
+										{['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFA500'].map((color) => (
+											<Tooltip key={color}>
+												<TooltipTrigger asChild>
+													<button
+														className="w-6 h-6 rounded border hover:ring-2 ring-offset-2 ring-primary transition-all"
+														style={{ backgroundColor: color }}
+														onClick={() => editor.chain().focus().setColor(color).run()}
+														aria-label={`Set text color to ${color}`}
+													/>
+												</TooltipTrigger>
+												<TooltipContent>
+													<p>{color}</p>
+												</TooltipContent>
+											</Tooltip>
+										))}
+									</div>
+									<Button 
+										variant="ghost" 
+										size="sm"
+										onClick={() => editor.chain().focus().unsetColor().run()}
+										className="mt-1"
+									>
+										Remove Color
+									</Button>
+								</div>
+							</div>
+						</PopoverContent>
+					</Popover>
 
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => {
-							const color = window.prompt('Enter highlight color');
-							if (color) {
-								editor.chain().focus().setHighlight({ color }).run();
-							}
-						}}
-						className={editor.isActive('highlight') ? 'bg-muted' : ''}
-					>
-						<Highlighter className="h-4 w-4" />
-					</Button>
+					<Popover>
+						<PopoverTrigger asChild>
+							<Button
+								variant="ghost"
+								size="sm"
+								className={editor.isActive('highlight') ? 'bg-muted' : ''}
+							>
+								<Highlighter className="h-4 w-4" />
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent className="w-auto p-3">
+							<div className="space-y-2">
+								<div className="text-sm font-medium">Highlight Color</div>
+								<div className="flex flex-col gap-2">
+									<input 
+										type="color"
+										defaultValue="#FFEB3B"
+										onChange={(e) => editor.chain().focus().setHighlight({ color: e.target.value }).run()}
+										className="w-32 h-8 cursor-pointer"
+									/>
+									<div className="flex gap-1">
+										{['#FFEB3B', '#FF9800', '#4CAF50', '#2196F3', '#F06292'].map((color) => (
+											<Tooltip key={color}>
+												<TooltipTrigger asChild>
+													<button
+														className="w-6 h-6 rounded border hover:ring-2 ring-offset-2 ring-primary transition-all"
+														style={{ backgroundColor: color }}
+														onClick={() => editor.chain().focus().setHighlight({ color }).run()}
+														aria-label={`Set highlight color to ${color}`}
+													/>
+												</TooltipTrigger>
+												<TooltipContent>
+													<p>{color}</p>
+												</TooltipContent>
+											</Tooltip>
+										))}
+									</div>
+									<Button 
+										variant="ghost" 
+										size="sm"
+										onClick={() => editor.chain().focus().unsetHighlight().run()}
+										className="mt-1"
+									>
+										Remove Highlight
+									</Button>
+								</div>
+							</div>
+						</PopoverContent>
+					</Popover>
 
 					<Button
 						variant="ghost"
