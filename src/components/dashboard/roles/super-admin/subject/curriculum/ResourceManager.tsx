@@ -1,12 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api } from "@/utils/api";
-import { CurriculumResourceType } from "@/types/curriculum";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import dynamic from 'next/dynamic';
 import { useEditor, EditorContent } from '@tiptap/react';
+import type { CurriculumResourceType } from ".prisma/client";
+
+// TipTap extensions
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Image from '@tiptap/extension-image';
+import TiptapLink from '@tiptap/extension-link';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
+import Underline from '@tiptap/extension-underline';
+import TextStyle from '@tiptap/extension-text-style';
 
 import {
 	Select,
@@ -24,6 +33,16 @@ import {
 } from "@/components/ui/card";
 import { Plus, FileText, Video, Link, File, Trash2 } from "lucide-react";
 
+const Editor = dynamic(
+	() => Promise.resolve(EditorContent),
+	{
+		ssr: false,
+		loading: () => <div className="min-h-[300px] w-full border rounded-lg p-4">Loading editor...</div>
+	}
+);
+
+
+
 interface ResourceFormProps {
 	nodeId: string;
 	onSuccess: () => void;
@@ -40,14 +59,24 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 			StarterKit,
 			Placeholder.configure({
 				placeholder: 'Start writing your content...'
-			})
+			}),
+			Image,
+			TiptapLink,
+			TaskList,
+			TaskItem,
+			Underline,
+			TextStyle
 		],
-		content: content,
 		onUpdate: ({ editor }) => {
 			setContent(editor.getHTML());
 		}
 	});
 
+	useEffect(() => {
+		if (editor && content !== editor.getHTML()) {
+			editor.commands.setContent(content);
+		}
+	}, [content, editor]);
 
 
 	const createResource = api.curriculum.createResource.useMutation({
@@ -73,11 +102,12 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 		switch (type) {
 			case "READING":
 				return (
-					<div className="min-h-[300px] w-full border rounded-lg p-4">
-						<EditorContent editor={editor} className="h-full prose max-w-none" />
+					<div className="min-h-[300px] w-full border rounded-lg overflow-hidden p-4 prose prose-sm max-w-none">
+						<EditorContent editor={editor} />
 					</div>
 
 				);
+
 			case "VIDEO":
 			case "URL":
 				return (
@@ -96,6 +126,8 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 						rows={4}
 					/>
 				);
+			default:
+				return null;
 		}
 	};
 
@@ -121,14 +153,19 @@ const ResourceForm: React.FC<ResourceFormProps> = ({ nodeId, onSuccess, onCancel
 				{renderContentInput()}
 				<div className="flex justify-end space-x-2">
 					<Button variant="outline" onClick={onCancel}>Cancel</Button>
-					<Button onClick={handleSubmit} disabled={createResource.isLoading}>Add Resource</Button>
+					<Button 
+						onClick={handleSubmit} 
+						disabled={createResource.status === 'pending'}
+					>
+						Add Resource
+					</Button>
 				</div>
 			</CardContent>
 		</Card>
 	);
 };
 
-const ResourceIcon = ({ type }: { type: CurriculumResourceType }) => {
+const ResourceIcon: React.FC<{ type: CurriculumResourceType }> = ({ type }) => {
 	switch (type) {
 		case "READING":
 			return <FileText className="h-4 w-4" />;
@@ -138,8 +175,20 @@ const ResourceIcon = ({ type }: { type: CurriculumResourceType }) => {
 			return <Link className="h-4 w-4" />;
 		case "DOCUMENT":
 			return <File className="h-4 w-4" />;
+		default:
+			return null;
 	}
 };
+
+interface ResourceNode {
+	id: string;
+	resources: {
+		id: string;
+		title: string;
+		type: CurriculumResourceType;
+		content: string;
+	}[];
+}
 
 interface ResourceManagerProps {
 	nodeId: string;
@@ -180,7 +229,7 @@ export const ResourceManager: React.FC<ResourceManagerProps> = ({ nodeId }) => {
 			)}
 
 			<div className="grid grid-cols-2 gap-4">
-				{resources?.map((node) =>
+				{resources?.map((node: ResourceNode) =>
 					node.resources.map((resource) => (
 						<Card key={resource.id}>
 							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
